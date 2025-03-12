@@ -27,7 +27,7 @@ update_recovery_file() {
   if [ -f "$RECOVERY_FILE" ]; then
     # Add last commit information
     LAST_COMMIT=$(git log -1 --pretty=format:"%h - %s")
-    MODIFIED_FILES=$(git diff --name-only HEAD~1 HEAD | grep -v "RECOVERY.md" | sort | head -n 10)
+    MODIFIED_FILES=$(git log -1 --name-only --pretty=format:"" | grep -v "RECOVERY.md" | sort | head -n 10)
     
     # Update the "Last Updated" section of the file
     sed -i '/## Last Auto-Update/,/## Current Progress/c\
