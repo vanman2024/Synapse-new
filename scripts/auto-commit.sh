@@ -18,6 +18,33 @@ if [ ! -d "$REPO_DIR/.git" ]; then
   exit 1
 fi
 
+# Function to update RECOVERY.md file
+update_recovery_file() {
+  RECOVERY_FILE="$REPO_DIR/RECOVERY.md"
+  TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+  
+  # Only update if the file exists
+  if [ -f "$RECOVERY_FILE" ]; then
+    # Add last commit information
+    LAST_COMMIT=$(git log -1 --pretty=format:"%h - %s")
+    MODIFIED_FILES=$(git diff --name-only HEAD~1 HEAD | grep -v "RECOVERY.md" | sort | head -n 10)
+    
+    # Update the "Last Updated" section of the file
+    sed -i '/## Last Auto-Update/,/## Current Progress/c\
+## Last Auto-Update\
+- **Timestamp:** '"$TIMESTAMP"'\
+- **Last Commit:** '"$LAST_COMMIT"'\
+- **Recently Modified Files:**\
+```\
+'"$MODIFIED_FILES"'\
+```\
+\
+## Current Progress' "$RECOVERY_FILE"
+    
+    echo "Updated RECOVERY.md at $TIMESTAMP"
+  fi
+}
+
 # Function to commit and push changes
 commit_and_push() {
   cd "$REPO_DIR"
@@ -25,6 +52,10 @@ commit_and_push() {
   # Check if there are changes to commit
   if git status --porcelain | grep -q .; then
     TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+    
+    # Update recovery file before committing
+    update_recovery_file
+    
     git add .
     git commit -m "Auto-commit: $TIMESTAMP"
     git push origin master
