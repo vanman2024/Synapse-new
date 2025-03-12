@@ -12,12 +12,17 @@ export interface Job {
     min?: number;
     max?: number;
     currency?: string;
-    period?: 'hourly' | 'annually';
+    period?: 'hourly' | 'monthly' | 'yearly';
   };
-  applicationUrl?: string;
+  employmentType?: 'full-time' | 'part-time' | 'contract' | 'temporary' | 'internship';
+  skills?: string[];
+  status?: 'active' | 'inactive' | 'draft' | 'expired';
+  postDate?: Date;
+  expiryDate?: Date;
+  externalJobId?: string;
+  applyUrl?: string;
   contactEmail?: string;
   isRemote?: boolean;
-  isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
