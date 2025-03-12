@@ -1,69 +1,95 @@
-# Synapse Project - Progress Tracker
+# 📊 Synapse Project - Development Tracker
 
-This file tracks our progress so we can quickly resume after interruptions.
+> Last Updated: March 12, 2025
+> 
+> This document helps you quickly understand the project's current state and resume work after interruptions.
 
-## Project Information
-- **Project Path:** `/mnt/c/Users/user/SynapseProject/Synapse-new`
-- **GitHub Repo:** https://github.com/vanman2024/Synapse-new
+## 📌 Quick Reference
+- **Project Path:** `C:\Users\user\SynapseProject\Synapse-new`
+- **GitHub Repository:** [https://github.com/vanman2024/Synapse-new](https://github.com/vanman2024/Synapse-new)
 
-## Last Auto-Update
-- **Timestamp:** 2025-03-12 02:11:16
-- **Last Commit:** aedaf2f - Auto-commit: Update RECOVERY.md at 2025-03-12 02:08:14
-- **Recently Modified Files:**
+## 🏗️ Project Architecture
+Synapse uses a layered architecture with a repository pattern for data access:
+
+```
+src/
+├── api/              # Express API routes & controllers
+├── data-sources/     # Data source implementations (Airtable)
+├── models/           # Data models & interfaces
+├── repositories/     # Repository pattern implementation
+├── services/         # Business logic services
+└── utils/            # Helper utilities
 ```
 
-```
+## ✅ Completed Components
 
-## Current Progress
+### Core Infrastructure
+- [x] Project structure & configuration
+- [x] Environment variables setup
+- [x] Express server with middleware
+- [x] Auto-commit system for recovery tracking
 
-### Components Implemented
-- ✅ Project Structure & Configuration
-- ✅ Data Access Layer with Repository Pattern
-  - ✅ AirtableClient for database operations
-  - ✅ Repository interfaces for all entities
-  - ✅ Airtable implementation for Brand repository
-  - ✅ Airtable implementation for Job repository
-- ✅ Service Layer
-  - ✅ CloudinaryService for image processing and storage
-  - ✅ OpenAIService for AI text and image generation
-- ✅ API Layer
-  - ✅ Brand Controller and API routes
-  - ✅ Job Controller and API routes
-  - ✅ Express Server setup with middleware
-- ✅ Project Infrastructure
-  - ✅ Comprehensive folder structure
-  - ✅ Auto-commit system with recovery tracking
-  - ✅ Environment variable configuration
+### Data Access Layer
+- [x] AirtableClient base implementation
+- [x] Repository interfaces for all entities
+- [x] Brand repository implementation
+- [x] Job repository implementation
 
-### In Progress
-- 🔄 Content Generation System
-- 🔄 Content Repository and API
+### Services
+- [x] CloudinaryService for image processing/storage
+- [x] OpenAIService for AI text & image generation
 
-### Next Steps
-1. Implement AirtableContentRepository 
-2. Implement ContentController and routes
-3. Implement Text Overlay System
-4. Implement Approval Workflow with Slack
-5. Implement Distribution System with Make.com integration
+### API Layer
+- [x] Brand controller & API routes
+- [x] Job controller & API routes
 
-## Recovery Instructions
+## 🚧 In Progress
+- [ ] **Content Repository Implementation**
+- [ ] Content Controller & API Routes
+- [ ] Text Overlay System
 
-1. **Check GitHub Repository:**
+## 📋 Next Steps
+1. Complete Content Repository implementation
+2. Implement Content Controller and API routes
+3. Build Text Overlay System 
+4. Integrate Slack for Approval Workflow
+5. Implement Distribution System with Make.com
+
+## 🛠️ Recovery Instructions
+
+If you need to resume development:
+
+1. **Clone the repository (if needed)**
    ```bash
-   cd /mnt/c/Users/user/SynapseProject/Synapse-new && git status
+   git clone https://github.com/vanman2024/Synapse-new.git
+   cd Synapse-new
    ```
 
-2. **Verify Project Structure:**
+2. **Install dependencies**
    ```bash
-   cd /mnt/c/Users/user/SynapseProject/Synapse-new && find src -type d | sort
+   npm install
    ```
 
-3. **Restart Auto-Commit:**
+3. **Check project structure**
    ```bash
-   cd /mnt/c/Users/user/SynapseProject/Synapse-new && npm run auto-commit &
+   find src -type d | sort
    ```
 
-4. **Check Current Dependencies:**
+4. **Restart auto-commit process (if needed)**
    ```bash
-   cd /mnt/c/Users/user/SynapseProject/Synapse-new && npm list --depth=0
+   pm2 resurrect    # If using PM2
+   # OR
+   npm run auto-commit &  # Manual start
    ```
+
+5. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+## 📚 Key Files
+- **Main Config:** `src/config/index.ts`
+- **Server Setup:** `src/api/server.ts`
+- **Data Client:** `src/data-sources/airtable/AirtableClient.ts`
+- **Brand Repository:** `src/repositories/implementations/AirtableBrandRepository.ts`
+- **Job Repository:** `src/repositories/implementations/AirtableJobRepository.ts`
