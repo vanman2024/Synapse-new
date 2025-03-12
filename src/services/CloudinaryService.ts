@@ -10,10 +10,12 @@ export class CloudinaryService {
    * Constructor - configures Cloudinary SDK
    */
   constructor() {
+    // Initialize Cloudinary configuration
     cloudinary.config({
-      cloud_name: config.CLOUDINARY.CLOUD_NAME,
-      api_key: config.CLOUDINARY.API_KEY,
-      api_secret: config.CLOUDINARY.API_SECRET
+      cloud_name: config.MEDIA.CLOUDINARY.CLOUD_NAME,
+      api_key: config.MEDIA.CLOUDINARY.API_KEY,
+      api_secret: config.MEDIA.CLOUDINARY.API_SECRET,
+      secure: true
     });
   }
 
@@ -104,7 +106,7 @@ export class CloudinaryService {
         backgroundColor = '000000',
         opacity = 0.7,
         padding = 20,
-        width = config.APP.DEFAULT_IMAGE_WIDTH
+        width = 1200 // Default image width
       } = options;
 
       // Escape text for URL
