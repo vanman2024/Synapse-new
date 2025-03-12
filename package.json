@@ -10,7 +10,7 @@
     "test": "jest",
     "lint": "eslint 'src/**/*.{js,ts}'",
     "setup": "ts-node scripts/setup.ts",
-    "auto-commit": "bash scripts/auto-commit.sh"
+    "auto-commit": "bash scripts/auto-commit.sh 3"
   },
   "keywords": [
     "content",
