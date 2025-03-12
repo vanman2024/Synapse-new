@@ -17,9 +17,10 @@ export class AirtableClient {
    * Private constructor for singleton pattern
    */
   private constructor() {
-    // Configure Airtable connection
+    // Configure Airtable connection with Personal Access Token
+    // This is the newer approach recommended by Airtable
     this.connection = new Airtable({
-      apiKey: config.AIRTABLE.API_KEY
+      apiKey: config.AIRTABLE.PERSONAL_ACCESS_TOKEN
     });
     
     // Get the specific Airtable base
@@ -153,6 +154,48 @@ export class AirtableClient {
       return recordId;
     } catch (error) {
       console.error(`Error deleting record ${recordId} from ${tableName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update multiple records in a table
+   * @param tableName The name of the table
+   * @param records Array of objects with id and fields
+   * @returns A promise that resolves to the updated records
+   */
+  public async updateMultiple(
+    tableName: string,
+    records: Array<{id: string, fields: Partial<FieldSet>}>
+  ): Promise<Array<Airtable.Record<FieldSet>>> {
+    try {
+      return await this.getTable(tableName).update(
+        records.map(record => ({
+          id: record.id,
+          fields: record.fields
+        }))
+      );
+    } catch (error) {
+      console.error(`Error updating multiple records in ${tableName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete multiple records from a table
+   * @param tableName The name of the table
+   * @param recordIds Array of record IDs to delete
+   * @returns A promise that resolves to the deleted record IDs
+   */
+  public async deleteMultiple(
+    tableName: string,
+    recordIds: string[]
+  ): Promise<string[]> {
+    try {
+      await this.getTable(tableName).destroy(recordIds);
+      return recordIds;
+    } catch (error) {
+      console.error(`Error deleting multiple records from ${tableName}:`, error);
       throw error;
     }
   }
