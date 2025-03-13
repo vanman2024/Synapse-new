@@ -45,12 +45,31 @@ All these are updated automatically:
 - Recently modified files
 - Current focus and tasks
 
+## Session Communication
+
+### Starting a Session
+- "Please review SESSION.md and tell me where we left off last time."
+- "Today we'll be focusing on [feature/task]. Let's continue with [specific goal]."
+
+### During Development
+- "Let's create a new feature branch for [feature]."
+- "Let's continue working on [component]. The last files we modified were [files]."
+- "Let's switch focus to [different task]."
+
+### Ending a Session
+- "Please summarize what we've accomplished and update the SESSION.md."
+- "For our next session, we should focus on [task]."
+- "Make sure all changes are committed before we end."
+
 ## Recovery
 
 If you need to recover:
 1. Navigate to project directory
 2. Run `./claude-start.sh`
-3. Claude will read SESSION.md for context
+3. Claude will automatically review:
+   - SESSION.md for current status and focus
+   - Project documentation for overall context
+   - Relevant source code for implementation details
 
 ## Project Structure
 
