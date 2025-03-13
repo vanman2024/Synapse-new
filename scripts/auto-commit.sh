@@ -65,6 +65,12 @@ commit_and_push() {
   # Always update the commit log and recovery file
   update_recovery_file
   
+  # Run the session tracker to update SESSION.md
+  if [ -f "$REPO_DIR/scripts/auto-session-tracker.sh" ]; then
+    $REPO_DIR/scripts/auto-session-tracker.sh
+    echo "Updated SESSION.md with latest activity"
+  fi
+  
   # Check if there are changes to commit
   if git status --porcelain | grep -q .; then
     TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
