@@ -21,6 +21,31 @@ This document explains how to use Claude AI effectively with this project, inclu
    - This file is automatically updated with each commit
    - No need to manually track progress between sessions
 
+3. **Context Review Process**
+   At the beginning of each session, Claude will automatically perform a comprehensive context review:
+   
+   - **Session status** (from SESSION.md)
+     - Current focus and priorities
+     - Recent activity and progress
+     - Planned next steps
+   
+   - **Project documentation**
+     - Architecture documentation for system design
+     - Project structure documentation for code organization
+     - Feature-specific documentation
+   
+   - **Current implementation**
+     - Relevant source files for context
+     - Models and interfaces for the components being worked on
+     - Test files to understand expected behavior
+   
+   - **Feature plans**
+     - If working on a feature, review the corresponding feature plan
+     - Implementation tasks and requirements
+     - Dependencies and test plans
+   
+   This thorough review ensures Claude maintains complete context awareness throughout the development process.
+
 ## Automation Tools
 
 ### 1. Auto-Commit System
