@@ -103,7 +103,19 @@ This provides:
 - Time estimates and focus analysis
 - An overview of changed files and recent commits
 
-### 7. Git Hooks
+### 7. Test Cycle System
+The `scripts/workflow/test-cycle.sh` script manages iterative testing:
+```bash
+./scripts/workflow/test-cycle.sh component-name cycle-number
+```
+This enables:
+- Automated testing with iteration tracking
+- Systematic verification of components
+- Generation of test reports
+- Integration with SESSION.md tracking
+- Structured debugging workflow
+
+### 8. Git Hooks
 Installed automatically to ensure:
 - SESSION.md is updated on every commit
 - All changes are properly tracked

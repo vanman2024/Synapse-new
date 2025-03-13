@@ -135,10 +135,11 @@ commit_and_push() {
       # Create an appropriate commit message based on change type
       COMMIT_MESSAGE="Auto-commit (${CHANGE_TYPE}): $TIMESTAMP"
       
-      # Commit and push
+      # Commit locally but don't push automatically
       git commit -m "$COMMIT_MESSAGE"
-      git push origin master
-      echo "Changes committed and pushed at $TIMESTAMP"
+      
+      # Log the commit but don't push to GitHub
+      echo "Changes committed locally at $TIMESTAMP (not pushed to GitHub)"
       echo "Change type detected: $CHANGE_TYPE"
     else
       echo "No tracked changes to commit (all changes in .autocommitignore)"

@@ -38,7 +38,7 @@
 #### Current Focus
 - Implemented enhanced session management workflow 
 - Organized all workflow scripts into dedicated directory
-- Created comprehensive documentation of the system
+- Created test-driven development workflow with iterative testing
 
 #### Last Activity
 📝 **22:06** - Auto-commit (docs): 2025-03-12 22:06:15 (+120, -15)
@@ -67,6 +67,8 @@ The last files we created/modified:
 - `/scripts/workflow/session-commands.sh` - Created standardized command processing
 - `/scripts/workflow/session-summary.sh` - Added session summary generation
 - `/scripts/workflow/new-feature.sh` - Feature branch creation
+- `/scripts/workflow/test-cycle.sh` - Iterative testing and debugging workflow
+- `/docs/workflow/TEST_DEBUG_WORKFLOW.md` - Guide to testing and debugging process
 
 **Key Files Reference**:
 - Main Config: `src/config/index.ts`

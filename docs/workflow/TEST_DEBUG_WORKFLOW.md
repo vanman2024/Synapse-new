@@ -1,6 +1,6 @@
 # Test & Debug Workflow
 
-This document outlines the iterative testing and debugging process for the Synapse project.
+This document outlines the iterative testing and debugging process for the Synapse project, ensuring code quality before pushing to GitHub.
 
 ## Test-Driven Development Cycle
 
