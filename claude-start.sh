@@ -6,7 +6,7 @@
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SESSION_FILE="$REPO_DIR/SESSION.md"
 DATE=$(date +"%B %d, %Y")
-LOCK_FILE="$REPO_DIR/.autocommit.lock"
+LOCK_FILE="$REPO_DIR/.claude-autocommit.lock"
 
 # Change to repo directory
 cd "$REPO_DIR"

@@ -19,6 +19,7 @@ This single command:
 - **claude-start.sh**: Main startup script
 - **scripts/auto-commit.sh**: Automatic commit system
 - **scripts/new-feature.sh**: Feature branch creator
+- **.claude-autocommit.lock**: Process ID of running auto-commit
 
 ## Creating Features
 
