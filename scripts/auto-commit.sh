@@ -111,8 +111,8 @@ commit_and_push() {
   update_session_file
   
   # Run the session tracker to update SESSION.md with details
-  if [ -f "$REPO_DIR/scripts/auto-session-tracker.sh" ]; then
-    $REPO_DIR/scripts/auto-session-tracker.sh
+  if [ -f "$REPO_DIR/scripts/workflow/auto-session-tracker.sh" ]; then
+    $REPO_DIR/scripts/workflow/auto-session-tracker.sh
     echo "Updated SESSION.md with latest activity"
   fi
   

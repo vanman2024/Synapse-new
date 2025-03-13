@@ -7,7 +7,7 @@ This document explains how to use Claude AI effectively with this project, inclu
 1. **Starting a Claude Session**
    ```bash
    cd /mnt/c/Users/user/SynapseProject/Synapse-new
-   ./claude-start.sh
+   ./scripts/workflow/claude-start.sh
    ```
    
    This startup script:
@@ -58,7 +58,7 @@ The `auto-commit.sh` script runs in the background and:
 - Respects .autocommitignore patterns to exclude unwanted files
 
 ### 2. Session Tracking System
-The `auto-session-tracker.sh` script:
+The `scripts/workflow/auto-session-tracker.sh` script:
 - Updates SESSION.md with your latest activities
 - Records which files you've been working on
 - Updates branch information
@@ -69,23 +69,23 @@ The `auto-session-tracker.sh` script:
 - Tracks metrics like lines added/removed
 
 ### 3. Command System
-The `session-commands.sh` script:
+The `scripts/workflow/session-commands.sh` script:
 - Processes standardized commands (prefixed with @)
 - Updates SESSION.md with changes based on commands
 - Provides a consistent interface for session management
 - Supports commands like @focus, @sprint, @todo, @summary
 
 ### 4. Context Prioritization
-The `claude-start.sh` script now:
+The `scripts/workflow/claude-start.sh` script now:
 - Analyzes current focus to find relevant files
 - Presents recently modified files related to current tasks
 - Shows sprint information if available
 - Prioritizes context for more efficient session starts
 
 ### 5. Feature Development
-The `new-feature.sh` script streamlines feature development:
+The `scripts/workflow/new-feature.sh` script streamlines feature development:
 ```bash
-./scripts/new-feature.sh feature-name "Feature description"
+./scripts/workflow/new-feature.sh feature-name "Feature description"
 ```
 This creates:
 - A new feature branch automatically
@@ -93,9 +93,9 @@ This creates:
 - Updates SESSION.md with your new focus
 
 ### 6. Session Summary
-The `session-summary.sh` script generates comprehensive session summaries:
+The `scripts/workflow/session-summary.sh` script generates comprehensive session summaries:
 ```bash
-./scripts/session-summary.sh [hours_ago]
+./scripts/workflow/session-summary.sh [hours_ago]
 ```
 This provides:
 - Activity metrics for the session (commits, files changed, lines added/removed)

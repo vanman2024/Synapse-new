@@ -34,11 +34,13 @@ This creates:
 
 | Script | Description |
 |--------|-------------|
-| `./claude-start.sh` | Start a new Claude session with auto-commit |
-| `./scripts/new-feature.sh` | Start a new feature branch with planning |
-| `./scripts/auto-session-tracker.sh` | Update SESSION.md (runs automatically) |
+| `./scripts/workflow/claude-start.sh` | Start a new Claude session with auto-commit |
+| `./scripts/workflow/new-feature.sh` | Start a new feature branch with planning |
+| `./scripts/workflow/session-commands.sh` | Process workflow commands (@focus, @sprint, etc.) |
+| `./scripts/workflow/session-summary.sh` | Generate session activity summaries |
+| `./scripts/workflow/auto-session-tracker.sh` | Update SESSION.md (runs automatically) |
 | `./scripts/auto-commit.sh` | Commit code every 5 minutes (runs automatically) |
-| `./scripts/setup-hooks.sh` | Install git hooks (runs automatically) |
+| `./scripts/workflow/setup-hooks.sh` | Install git hooks (runs automatically) |
 
 ## Project Structure
 
@@ -47,9 +49,19 @@ The key project files and directories are:
 ```
 /
 ├── SESSION.md             # Current session info and project status
-├── claude-start.sh        # Start script for Claude sessions
 ├── features/              # Feature planning documents
 ├── scripts/               # Automation scripts
+│   ├── auto-commit.sh     # Main auto-commit script
+│   └── workflow/          # Claude workflow scripts
+│       ├── claude-start.sh         # Main startup script
+│       ├── auto-session-tracker.sh  # Updates SESSION.md
+│       ├── new-feature.sh          # Feature branch creation
+│       ├── session-commands.sh     # Command processor
+│       ├── session-summary.sh      # Session summary generator
+│       └── setup-hooks.sh          # Git hooks installation
+├── docs/                  # Documentation
+│   └── workflow/          # Workflow documentation
+│       └── session-archives/  # Archived session activities
 └── src/                   # Source code
     ├── api/               # Express API routes & controllers
     ├── data-sources/      # Data source implementations (Airtable)

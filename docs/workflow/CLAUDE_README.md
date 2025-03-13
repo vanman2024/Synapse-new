@@ -4,7 +4,7 @@
 
 ```bash
 cd /mnt/c/Users/user/SynapseProject/Synapse-new
-./claude-start.sh
+./scripts/workflow/claude-start.sh
 ```
 
 This single command:
@@ -16,16 +16,21 @@ This single command:
 ## Key Files
 
 - **SESSION.md**: Current project status and focus
-- **claude-start.sh**: Main startup script
+- **scripts/workflow/claude-start.sh**: Main startup script
 - **scripts/auto-commit.sh**: Automatic commit system
-- **scripts/new-feature.sh**: Feature branch creator
+- **scripts/workflow/**: Directory containing all workflow scripts
+  - **auto-session-tracker.sh**: Updates SESSION.md with activities
+  - **session-commands.sh**: Command processor for workflow
+  - **session-summary.sh**: Generates session summaries
+  - **new-feature.sh**: Feature branch creator
+  - **setup-hooks.sh**: Installs git hooks
 - **.claude-autocommit.lock**: Process ID of running auto-commit
 - **logs/system/auto-commit.log**: Log output from auto-commit process
 
 ## Creating Features
 
 ```bash
-./scripts/new-feature.sh feature-name "Description"
+./scripts/workflow/new-feature.sh feature-name "Description"
 ```
 
 ## Automation Tools

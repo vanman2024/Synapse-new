@@ -17,8 +17,8 @@ cat > "$HOOKS_DIR/pre-commit" << 'EOF'
 #!/bin/bash
 
 # Run the session tracker to update SESSION.md
-if [ -f "./scripts/auto-session-tracker.sh" ]; then
-  ./scripts/auto-session-tracker.sh
+if [ -f "./scripts/workflow/auto-session-tracker.sh" ]; then
+  ./scripts/workflow/auto-session-tracker.sh
   # Re-add SESSION.md after it's been updated
   git add SESSION.md
 fi
@@ -36,8 +36,8 @@ cat > "$HOOKS_DIR/pre-push" << 'EOF'
 #!/bin/bash
 
 # Make sure SESSION.md is up to date before pushing
-if [ -f "./scripts/auto-session-tracker.sh" ]; then
-  ./scripts/auto-session-tracker.sh
+if [ -f "./scripts/workflow/auto-session-tracker.sh" ]; then
+  ./scripts/workflow/auto-session-tracker.sh
   git add SESSION.md
   if git status --porcelain | grep -q "SESSION.md"; then
     git commit -m "Update SESSION.md before push"
