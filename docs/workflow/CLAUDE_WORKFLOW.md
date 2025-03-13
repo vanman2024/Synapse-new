@@ -26,9 +26,9 @@ This document explains how to use Claude AI effectively with this project, inclu
 ### 1. Auto-Commit System
 The `auto-commit.sh` script runs in the background and:
 - Commits all changes every 5 minutes
-- Updates commit-log.txt with commit information
 - Updates SESSION.md with your recent activities
 - Pushes changes to GitHub automatically
+- Logs its activity to logs/system/auto-commit.log
 
 ### 2. Session Tracking System
 The `auto-session-tracker.sh` script:

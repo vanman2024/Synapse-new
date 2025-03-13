@@ -16,15 +16,19 @@ echo "  SYNAPSE PROJECT - CLAUDE SESSION"
 echo "  $DATE"
 echo "=================================="
 
+# Make sure logs directory exists
+LOG_DIR="$REPO_DIR/logs/system"
+mkdir -p "$LOG_DIR"
+
 # Check if auto-commit is already running
 if [ -f "$LOCK_FILE" ] && ps -p $(cat "$LOCK_FILE") > /dev/null; then
   echo "✅ Auto-commit is already running with PID $(cat "$LOCK_FILE")"
 else
   # Start auto-commit script in background and save PID
-  nohup "$REPO_DIR/scripts/auto-commit.sh" > "$REPO_DIR/auto-commit.log" 2>&1 &
+  nohup "$REPO_DIR/scripts/auto-commit.sh" > "$LOG_DIR/auto-commit.log" 2>&1 &
   echo $! > "$LOCK_FILE"
   echo "✅ Started auto-commit script with PID $(cat "$LOCK_FILE")"
-  echo "   Output is being logged to auto-commit.log"
+  echo "   Output is being logged to logs/system/auto-commit.log"
 fi
 
 # Install git hooks if they're not already set up

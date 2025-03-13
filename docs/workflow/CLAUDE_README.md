@@ -20,6 +20,7 @@ This single command:
 - **scripts/auto-commit.sh**: Automatic commit system
 - **scripts/new-feature.sh**: Feature branch creator
 - **.claude-autocommit.lock**: Process ID of running auto-commit
+- **logs/system/auto-commit.log**: Log output from auto-commit process
 
 ## Creating Features
 
