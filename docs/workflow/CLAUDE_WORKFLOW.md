@@ -115,7 +115,19 @@ This enables:
 - Integration with SESSION.md tracking
 - Structured debugging workflow
 
-### 8. Git Hooks
+### 8. Verify and Push System
+The `scripts/workflow/verify-and-push.sh` script ensures code quality before GitHub pushes:
+```bash
+./scripts/workflow/verify-and-push.sh [component]
+```
+This provides:
+- Final verification before GitHub pushes
+- Separation between local commits and remote pushes
+- Protection against pushing broken code
+- Integration with the test cycle system
+- Documentation of push events in SESSION.md
+
+### 9. Git Hooks
 Installed automatically to ensure:
 - SESSION.md is updated on every commit
 - All changes are properly tracked

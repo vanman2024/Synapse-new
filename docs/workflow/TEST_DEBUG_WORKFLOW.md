@@ -10,7 +10,8 @@ Our development process follows this iterative cycle:
 2. **Test Cycle** - Run tests, linting, and type checking
 3. **Debug & Fix** - Address any issues found during testing
 4. **Repeat** - Continue cycles until all tests pass
-5. **Review & Merge** - Submit for review and merge to develop branch
+5. **Verify & Push** - Run final verification and push to GitHub
+6. **Review & Merge** - Submit for review and merge to develop branch
 
 ## Using the Test Cycle Script
 
@@ -58,6 +59,28 @@ When tests fail, follow this debugging workflow:
    ```
 4. **Document Progress** - Add notes about fixes to SESSION.md
 
+## Local Commits vs. GitHub Pushes
+
+Our workflow distinguishes between local commits and GitHub pushes:
+
+- **Auto-Commit System**: Makes local Git commits every 5 minutes to save your work
+- **No Automatic Pushes**: Does NOT automatically push to GitHub
+- **Verify & Push**: Only push to GitHub after verification passes
+
+### Using the Verify & Push Script
+
+When you're ready to push your tested code to GitHub:
+
+```bash
+./scripts/workflow/verify-and-push.sh [component]
+```
+
+This script:
+1. Checks for unpushed commits
+2. Runs full verification (tests, linting, type checking)
+3. Only pushes to GitHub if all checks pass
+4. Updates SESSION.md with push information
+
 ## Integration with Session Tracking
 
 The test cycle process is integrated with our session tracking system:
@@ -65,6 +88,7 @@ The test cycle process is integrated with our session tracking system:
 - Test results are automatically added to SESSION.md
 - The cycle number is tracked across sessions
 - Previous test reports are preserved for reference
+- Push events are recorded in SESSION.md
 
 ## Example Workflow
 
@@ -87,7 +111,10 @@ The test cycle process is integrated with our session tracking system:
 # Continue until all tests pass
 # ... (further cycles) ...
 
-# When all tests pass, prepare for review
+# When all tests pass, verify and push to GitHub
+./scripts/workflow/verify-and-push.sh content-repository
+
+# Prepare for review
 ./scripts/workflow/session-commands.sh @todo:"Review and merge content repository"
 ```
 

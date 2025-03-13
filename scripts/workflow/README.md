@@ -64,6 +64,9 @@ Generates a summary of activity from the specified time period.
 
 # Example: Follow-up test after fixes
 ./scripts/workflow/test-cycle.sh content-repository 2
+
+# Verify and push to GitHub when ready
+./scripts/workflow/verify-and-push.sh component-name
 ```
 
 ## File Organization
