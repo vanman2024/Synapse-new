@@ -56,20 +56,18 @@ scripts/session-summary.sh
 
 #### Next Tasks
 - [ ] Test the automated session tracking system
-- [ ] Implement the content repository based on project plan
-- [ ] Update documentation with examples of the new workflow
+- [ ] Begin implementation of Content Repository (see MODULE_TRACKER.md)
+- [ ] Set up test scaffolding for Content modules
 
 ### Code Context
 The last files we created/modified:
 - `/scripts/auto-commit.sh` - Modified to commit locally without auto-pushing to GitHub
 - `/scripts/workflow/claude-start.sh` - Main startup script with contextual awareness
-- `/scripts/workflow/auto-session-tracker.sh` - Added sprint tracking and archiving
-- `/scripts/workflow/session-commands.sh` - Created standardized command processing
-- `/scripts/workflow/session-summary.sh` - Added session summary generation
-- `/scripts/workflow/new-feature.sh` - Feature branch creation
 - `/scripts/workflow/test-cycle.sh` - Iterative testing and debugging workflow
 - `/scripts/workflow/verify-and-push.sh` - Verification before pushing to GitHub
 - `/docs/workflow/TEST_DEBUG_WORKFLOW.md` - Guide to testing and debugging process
+- `/docs/claude/CLAUDE_DEVELOPMENT_INSTRUCTIONS.md` - Development guidelines for Claude
+- `/docs/claude/MODULE_TRACKER.md` - High-level project modules and roadmap
 
 **Key Files Reference**:
 - Main Config: `src/config/index.ts`

@@ -5,6 +5,7 @@ This directory contains documentation specifically for Claude AI when working on
 ## Key Documents
 
 - [CLAUDE_DEVELOPMENT_INSTRUCTIONS.md](./CLAUDE_DEVELOPMENT_INSTRUCTIONS.md) - Comprehensive development guidelines for Claude
+- [MODULE_TRACKER.md](./MODULE_TRACKER.md) - High-level project modules and development roadmap
 
 ## Purpose
 
