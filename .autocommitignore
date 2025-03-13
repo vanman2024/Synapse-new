@@ -1,0 +1,54 @@
+# .autocommitignore - Files to exclude from auto-commits
+# Similar to .gitignore but specifically for the auto-commit process
+
+# Logs (except system logs we want to track)
+logs/error/*
+logs/info/*
+!logs/system/
+
+# Runtime data
+*.pid
+*.seed
+*.log
+!logs/system/*.log
+
+# Node dependencies
+node_modules/
+
+# Build files
+dist/
+build/
+out/
+.next/
+
+# Cache directories
+.npm/
+.eslintcache
+.cache/
+
+# Temporary files
+.tmp/
+temp/
+*.tmp
+*.temp
+
+# Local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Generated files
+coverage/
+instrumented/
+.nyc_output/
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Misc
+.DS_Store
+Thumbs.db

@@ -35,6 +35,74 @@ update_session_file() {
   echo "Updated session file at $TIMESTAMP"
 }
 
+# Function to get list of files to be tracked, considering .autocommitignore
+get_tracked_files() {
+  # First get all modified and untracked files
+  ALL_CHANGES=$(git status --porcelain | grep -v "^D " | awk '{print $2}')
+  
+  # If .autocommitignore exists, filter files using grep -v
+  IGNORE_FILE="$REPO_DIR/.autocommitignore"
+  if [ -f "$IGNORE_FILE" ]; then
+    # Create a grep pattern from .autocommitignore, excluding comments and blank lines
+    IGNORE_PATTERN=$(grep -v "^#" "$IGNORE_FILE" | grep -v "^$" | sed 's/\*/\\*/g' | sed 's/\./\\./g' | sed 's/^/^/' | sed 's/$//')
+    if [ -n "$IGNORE_PATTERN" ]; then
+      # Filter out ignored files
+      TRACKED_FILES=""
+      for FILE in $ALL_CHANGES; do
+        if ! echo "$FILE" | grep -q -f "$IGNORE_FILE"; then
+          TRACKED_FILES="$TRACKED_FILES $FILE"
+        fi
+      done
+      echo "$TRACKED_FILES"
+    else
+      echo "$ALL_CHANGES"
+    fi
+  else
+    echo "$ALL_CHANGES"
+  fi
+}
+
+# Function to detect change type from files changed
+detect_change_type() {
+  # Get the list of changed files
+  CHANGED_FILES="$1"
+  
+  # Initialize flags for different change types
+  HAS_DOCS=false
+  HAS_TESTS=false
+  HAS_FEATURE=false
+  HAS_FIX=false
+  HAS_REFACTOR=false
+  
+  # Check each file to determine change type
+  for FILE in $CHANGED_FILES; do
+    if [[ "$FILE" == *"test"* || "$FILE" == *"spec"* ]]; then
+      HAS_TESTS=true
+    elif [[ "$FILE" == *"doc"* || "$FILE" == *"README"* || "$FILE" == *".md" ]]; then
+      HAS_DOCS=true
+    elif [[ "$FILE" == *"fix"* || "$FILE" == *"bug"* ]]; then
+      HAS_FIX=true
+    elif [[ "$FILE" == *"refactor"* ]]; then
+      HAS_REFACTOR=true
+    else
+      HAS_FEATURE=true
+    fi
+  done
+  
+  # Determine primary change type based on file patterns
+  if $HAS_FIX; then
+    echo "fix"
+  elif $HAS_REFACTOR; then
+    echo "refactor"
+  elif $HAS_TESTS && ! $HAS_FEATURE; then
+    echo "test"
+  elif $HAS_DOCS && ! $HAS_FEATURE; then
+    echo "docs"
+  else
+    echo "feature"
+  fi
+}
+
 # Function to commit and push changes
 commit_and_push() {
   cd "$REPO_DIR"
@@ -52,13 +120,29 @@ commit_and_push() {
   if git status --porcelain | grep -q .; then
     TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
     
-    # Add all changes
-    git add .
+    # Get tracked files (respecting .autocommitignore)
+    TRACKED_FILES=$(get_tracked_files)
     
-    # Commit and push
-    git commit -m "Auto-commit: $TIMESTAMP"
-    git push origin master
-    echo "Changes committed and pushed at $TIMESTAMP"
+    if [ -n "$TRACKED_FILES" ]; then
+      # Detect change type
+      CHANGE_TYPE=$(detect_change_type "$TRACKED_FILES")
+      
+      # Add tracked files individually to respect .autocommitignore
+      for FILE in $TRACKED_FILES; do
+        git add "$FILE"
+      done
+      
+      # Create an appropriate commit message based on change type
+      COMMIT_MESSAGE="Auto-commit (${CHANGE_TYPE}): $TIMESTAMP"
+      
+      # Commit and push
+      git commit -m "$COMMIT_MESSAGE"
+      git push origin master
+      echo "Changes committed and pushed at $TIMESTAMP"
+      echo "Change type detected: $CHANGE_TYPE"
+    else
+      echo "No tracked changes to commit (all changes in .autocommitignore)"
+    fi
   else
     echo "No changes to commit at $(date +"%Y-%m-%d %H:%M:%S")"
   fi

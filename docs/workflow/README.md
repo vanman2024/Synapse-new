@@ -1,6 +1,6 @@
 # Synapse Development Workflow
 
-This directory contains documentation related to the development workflow using Claude AI and automated session tracking.
+This directory contains documentation related to the Claude AI session management workflow system.
 
 ## Quick Start
 
@@ -14,6 +14,7 @@ cd /mnt/c/Users/user/SynapseProject/Synapse-new
 - [CLAUDE_README.md](./CLAUDE_README.md) - Quick reference for working with Claude
 - [CLAUDE_WORKFLOW.md](./CLAUDE_WORKFLOW.md) - Comprehensive guide to the automated tracking system
 - [GUIDE.md](./GUIDE.md) - General development guide with project structure information
+- [SESSION_WORKFLOW_IMPROVEMENTS.md](./SESSION_WORKFLOW_IMPROVEMENTS.md) - Planned enhancements to our session management workflow
 
 ## Key Concepts
 
