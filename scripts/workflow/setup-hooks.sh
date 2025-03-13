@@ -3,12 +3,15 @@
 # setup-hooks.sh - Sets up git hooks for automated session tracking
 # Run this script once to install git hooks
 
-REPO_DIR="$(pwd)"
+# Get the workflow directory
+WORKFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the repository root directory (two levels up from the workflow dir)
+REPO_DIR="$(cd "$WORKFLOW_DIR/../.." && pwd)"
 HOOKS_DIR="$REPO_DIR/.git/hooks"
 
-# Check if we're in the repo root
+# Check if .git directory exists
 if [ ! -d "$REPO_DIR/.git" ]; then
-  echo "Error: Not in git repository root. Please run from the project root."
+  echo "Error: Could not find .git directory. Script path issue."
   exit 1
 fi
 

@@ -3,7 +3,10 @@
 # claude-start.sh - Run this at the beginning of each Claude session
 # Automatically starts the auto-commit script and displays session status
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the workflow directory
+WORKFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the repository root directory (two levels up from the workflow dir)
+REPO_DIR="$(cd "$WORKFLOW_DIR/../.." && pwd)"
 SESSION_FILE="$REPO_DIR/SESSION.md"
 DATE=$(date +"%B %d, %Y")
 LOCK_FILE="$REPO_DIR/.claude-autocommit.lock"
@@ -25,7 +28,7 @@ if [ -f "$LOCK_FILE" ] && ps -p $(cat "$LOCK_FILE") > /dev/null; then
   echo "✅ Auto-commit is already running with PID $(cat "$LOCK_FILE")"
 else
   # Start auto-commit script in background and save PID
-  nohup "$REPO_DIR/scripts/auto-commit.sh" > "$LOG_DIR/auto-commit.log" 2>&1 &
+  nohup "$REPO_DIR/scripts/auto-commit.sh" > "$REPO_DIR/logs/system/auto-commit.log" 2>&1 &
   echo $! > "$LOCK_FILE"
   echo "✅ Started auto-commit script with PID $(cat "$LOCK_FILE")"
   echo "   Output is being logged to logs/system/auto-commit.log"
@@ -34,7 +37,7 @@ fi
 # Install git hooks if they're not already set up
 if [ ! -x "$REPO_DIR/.git/hooks/pre-commit" ]; then
   echo "Setting up git hooks..."
-  bash "$REPO_DIR/scripts/workflow/setup-hooks.sh"
+  bash "$WORKFLOW_DIR/setup-hooks.sh"
 fi
 
 # Update SESSION.md with current date
