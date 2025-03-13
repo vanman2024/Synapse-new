@@ -56,11 +56,38 @@ echo "PROJECT STATUS:"
 echo "------------------------------------------------"
 sed -n '/#### Project Status/,/#### Current Focus/p' "$SESSION_FILE" | head -n -1 | tail -n +2
 
+# Show sprint info if available
+if grep -q "### Current Sprint" "$SESSION_FILE"; then
+  echo ""
+  echo "SPRINT INFO:"
+  echo "------------------------------------------------"
+  sed -n '/### Current Sprint/,/### Progress Tracker/p' "$SESSION_FILE" | head -n -1 | tail -n +2
+fi
+
 # Show current focus
 echo ""
 echo "CURRENT FOCUS:"
 echo "------------------------------------------------"
 sed -n '/#### Current Focus/,/#### Last Activity/p' "$SESSION_FILE" | head -n -1 | tail -n +2
+
+# Find relevant files based on current focus
+echo ""
+echo "CONTEXT PRIORITY FILES:"
+echo "------------------------------------------------"
+FOCUS_KEYWORDS=$(sed -n '/#### Current Focus/,/#### Last Activity/p' "$SESSION_FILE" | head -n -1 | tail -n +2 | \
+  grep -o -E '\w+' | tr '\n' '|' | sed 's/|$//')
+
+if [ -n "$FOCUS_KEYWORDS" ]; then
+  # Find recently modified files related to focus keywords
+  echo "Files related to current focus:"
+  git ls-files | grep -E "$FOCUS_KEYWORDS" | head -n 5
+  
+  # Show recently modified files
+  echo ""
+  echo "Recently modified files:"
+  git log --name-only --pretty=format: -n 5 | grep -v '^$' | sort | uniq | head -n 5
+fi$' | sort | uniq | head -n 5
+fi
 
 echo ""
 echo "Claude session is ready to begin!"
@@ -71,6 +98,12 @@ echo ""
 echo "DOCUMENTATION:"
 echo "  - Quick Reference: docs/workflow/CLAUDE_README.md"
 echo "  - Detailed Guide:  docs/workflow/CLAUDE_WORKFLOW.md"
+echo ""
+echo "COMMANDS:"
+echo "  @focus:component   - Set current focus to component"
+echo "  @sprint:name,start,end - Set sprint information"
+echo "  @todo:task         - Add a task to Next Tasks"
+echo "  @summary           - Generate session summary"
 echo ""
 echo "SUGGESTED FIRST MESSAGE:"
 echo "  \"Please review SESSION.md and project documentation to understand where we left off.\""

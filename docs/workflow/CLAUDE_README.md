@@ -56,6 +56,14 @@ All these are updated automatically:
 - "Let's continue working on [component]. The last files we modified were [files]."
 - "Let's switch focus to [different task]."
 
+### Standard Commands
+Use these standardized commands for common operations:
+- `@focus:component` - Set current focus to a specific component
+- `@sprint:name,start-date,end-date` - Set current sprint information
+- `@todo:task` - Add a task to Next Tasks
+- `@summary` - Generate session summary
+- `@help` - Show available commands
+
 ### Ending a Session
 - "Please summarize what we've accomplished and update the SESSION.md."
 - "For our next session, we should focus on [task]."

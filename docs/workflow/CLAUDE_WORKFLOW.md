@@ -54,6 +54,8 @@ The `auto-commit.sh` script runs in the background and:
 - Updates SESSION.md with your recent activities
 - Pushes changes to GitHub automatically
 - Logs its activity to logs/system/auto-commit.log
+- Intelligently detects change types (feature, fix, docs, test, refactor)
+- Respects .autocommitignore patterns to exclude unwanted files
 
 ### 2. Session Tracking System
 The `auto-session-tracker.sh` script:
@@ -61,8 +63,26 @@ The `auto-session-tracker.sh` script:
 - Records which files you've been working on
 - Updates branch information
 - Maintains continuity between Claude sessions
+- Archives older activities to prevent SESSION.md bloat
+- Tracks sprint progress and calculates days remaining
+- Uses icons and formatting for better readability
+- Tracks metrics like lines added/removed
 
-### 3. Feature Development
+### 3. Command System
+The `session-commands.sh` script:
+- Processes standardized commands (prefixed with @)
+- Updates SESSION.md with changes based on commands
+- Provides a consistent interface for session management
+- Supports commands like @focus, @sprint, @todo, @summary
+
+### 4. Context Prioritization
+The `claude-start.sh` script now:
+- Analyzes current focus to find relevant files
+- Presents recently modified files related to current tasks
+- Shows sprint information if available
+- Prioritizes context for more efficient session starts
+
+### 5. Feature Development
 The `new-feature.sh` script streamlines feature development:
 ```bash
 ./scripts/new-feature.sh feature-name "Feature description"
@@ -72,7 +92,18 @@ This creates:
 - A detailed feature plan file
 - Updates SESSION.md with your new focus
 
-### 4. Git Hooks
+### 6. Session Summary
+The `session-summary.sh` script generates comprehensive session summaries:
+```bash
+./scripts/session-summary.sh [hours_ago]
+```
+This provides:
+- Activity metrics for the session (commits, files changed, lines added/removed)
+- A breakdown of work types (features, fixes, docs, etc.)
+- Time estimates and focus analysis
+- An overview of changed files and recent commits
+
+### 7. Git Hooks
 Installed automatically to ensure:
 - SESSION.md is updated on every commit
 - All changes are properly tracked
