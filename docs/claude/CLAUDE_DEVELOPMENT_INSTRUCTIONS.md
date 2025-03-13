@@ -13,6 +13,7 @@ This document serves as a reference guide for Claude when working on the Synapse
 
 ### Workflow Process
 1. Start every session with `./scripts/workflow/claude-start.sh`
+2. Make sure to open and access only the following codebase C:\Users\user\SynapseProject\Synapse-new for this project 
 2. Review SESSION.md for context and current focus
 3. Use feature branches for all new development
 4. Implement code with accompanying tests
