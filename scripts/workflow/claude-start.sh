@@ -77,8 +77,7 @@ sed -n '/#### Current Focus/,/#### Last Activity/p' "$SESSION_FILE" | head -n -1
 echo ""
 echo "CONTEXT PRIORITY FILES:"
 echo "------------------------------------------------"
-FOCUS_KEYWORDS=$(sed -n '/#### Current Focus/,/#### Last Activity/p' "$SESSION_FILE" | head -n -1 | tail -n +2 | \
-  grep -o -E '\w+' | tr '\n' '|' | sed 's/|$//')
+FOCUS_KEYWORDS=$(sed -n '/#### Current Focus/,/#### Last Activity/p' "$SESSION_FILE" | head -n -1 | tail -n +2 | grep -o -E '\w+' | tr '\n' '|' | sed 's/|$//')
 
 if [ -n "$FOCUS_KEYWORDS" ]; then
   # Find recently modified files related to focus keywords
@@ -89,7 +88,6 @@ if [ -n "$FOCUS_KEYWORDS" ]; then
   echo ""
   echo "Recently modified files:"
   git log --name-only --pretty=format: -n 5 | grep -v '^$' | sort | uniq | head -n 5
-fi$' | sort | uniq | head -n 5
 fi
 
 echo ""

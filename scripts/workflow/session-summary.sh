@@ -3,7 +3,10 @@
 # session-summary.sh - Generates a summary of the current session
 # Usage: ./scripts/session-summary.sh [since_hours_ago]
 
-REPO_DIR="$(pwd)"
+# Get the workflow directory
+WORKFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the repository root directory (two levels up from the workflow dir)
+REPO_DIR="$(cd "$WORKFLOW_DIR/../.." && pwd)"
 SESSION_FILE="$REPO_DIR/SESSION.md"
 HOURS_AGO=${1:-24}  # Default to last 24 hours if not specified
 SESSION_START=$(date -d "$HOURS_AGO hours ago" +"%Y-%m-%d %H:%M:%S")

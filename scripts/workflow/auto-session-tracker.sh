@@ -3,7 +3,10 @@
 # auto-session-tracker.sh - Automatically tracks session progress
 # Set up as a git hook or run periodically with auto-commit
 
-REPO_DIR="$(pwd)"
+# Get the workflow directory
+WORKFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the repository root directory (two levels up from the workflow dir)
+REPO_DIR="$(cd "$WORKFLOW_DIR/../.." && pwd)"
 SESSION_FILE="$REPO_DIR/SESSION.md"
 ARCHIVE_DIR="$REPO_DIR/docs/workflow/session-archives"
 DATE=$(date +"%B %d, %Y")

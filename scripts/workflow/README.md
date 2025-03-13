@@ -5,11 +5,13 @@ This directory contains all scripts related to the Claude AI session management 
 ## Script Overview
 
 ### Main Scripts
+- `claude-start.sh` - Starts a Claude session with all tracking systems
 - `auto-session-tracker.sh` - Updates SESSION.md with current activity
 - `session-commands.sh` - Processes standardized workflow commands
 - `session-summary.sh` - Generates comprehensive session summaries
 - `new-feature.sh` - Creates feature branches with planning documents
 - `setup-hooks.sh` - Installs git hooks for session tracking
+- `test-cycle.sh` - Manages iterative testing and debugging cycles
 
 ### Usage
 
@@ -50,6 +52,19 @@ Generates a summary of activity from the specified time period.
 | `@sprint` | Update sprint info | `@sprint:Sprint 1,2025-03-12,2025-03-26` |
 | `@todo` | Add task to Next Tasks | `@todo:Implement user authentication` |
 | `@summary` | Generate session summary | `@summary` |
+
+## Testing and Debugging
+
+```bash
+# Run a test cycle for a component
+./scripts/workflow/test-cycle.sh component-name cycle-number
+
+# Example: First test cycle for content repository 
+./scripts/workflow/test-cycle.sh content-repository 1
+
+# Example: Follow-up test after fixes
+./scripts/workflow/test-cycle.sh content-repository 2
+```
 
 ## File Organization
 

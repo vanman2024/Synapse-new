@@ -15,6 +15,7 @@ cd /mnt/c/Users/user/SynapseProject/Synapse-new
 - [CLAUDE_WORKFLOW.md](./CLAUDE_WORKFLOW.md) - Comprehensive guide to the automated tracking system
 - [GUIDE.md](./GUIDE.md) - General development guide with project structure information
 - [SESSION_WORKFLOW_IMPROVEMENTS.md](./SESSION_WORKFLOW_IMPROVEMENTS.md) - Planned enhancements to our session management workflow
+- [TEST_DEBUG_WORKFLOW.md](./TEST_DEBUG_WORKFLOW.md) - Guide to the iterative testing and debugging process
 
 ## Key Concepts
 

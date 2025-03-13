@@ -5,7 +5,10 @@
 
 FEATURE_NAME=$1
 FEATURE_DESC=$2
-REPO_DIR="$(pwd)"
+# Get the workflow directory
+WORKFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the repository root directory (two levels up from the workflow dir)
+REPO_DIR="$(cd "$WORKFLOW_DIR/../.." && pwd)"
 SESSION_FILE="$REPO_DIR/SESSION.md"
 DATE=$(date +"%B %d, %Y")
 

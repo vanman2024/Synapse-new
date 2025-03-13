@@ -3,7 +3,10 @@
 # session-commands.sh - Process commands from SESSION.md
 # Usage: ./scripts/session-commands.sh [command]
 
-REPO_DIR="$(pwd)"
+# Get the workflow directory
+WORKFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the repository root directory (two levels up from the workflow dir)
+REPO_DIR="$(cd "$WORKFLOW_DIR/../.." && pwd)"
 SESSION_FILE="$REPO_DIR/SESSION.md"
 COMMAND=$1
 
