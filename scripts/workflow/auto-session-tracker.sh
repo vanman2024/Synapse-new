@@ -22,7 +22,10 @@ mkdir -p "$ARCHIVE_DIR"
 # Run the session archiver to keep SESSION.md manageable
 # This keeps the most recent 3 sessions and archives older ones
 if [ -f "$WORKFLOW_DIR/session-archive.sh" ]; then
-  bash "$WORKFLOW_DIR/session-archive.sh"
+  # Run the archiver and capture the most recent archive file if any
+  ARCHIVE_OUTPUT=$(bash "$WORKFLOW_DIR/session-archive.sh")
+  # Extract the archive file path from the output if present
+  ARCHIVE_FILE=$(echo "$ARCHIVE_OUTPUT" | grep -o "to [^ ]*\.md" | sed 's/to //')
 fi
 
 # Update session date

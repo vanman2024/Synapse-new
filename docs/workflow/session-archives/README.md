@@ -8,7 +8,7 @@ Archives are automatically created when SESSION.md grows beyond 300 lines, prese
 
 Each archive file is named according to the date when it was created:
 ```
-session_YYYYMMDD.md
+session-YYYYMMDD.md
 ```
 
 The contents include:
@@ -18,6 +18,23 @@ The contents include:
 
 ## Accessing Archives
 
-To review older activity history, simply browse the archive files in this directory. They are sorted by date, with the most recent archives appearing first in the file listing.
+You can access archives in several ways:
 
-Archives are automatically created and managed by the `auto-session-tracker.sh` script. You should not need to manually edit or manage these files.
+1. **Browse directly**: Simply view the files in this directory. They are sorted by date, with the most recent archives appearing first in the file listing.
+
+2. **List available archives**:
+   ```bash
+   ./scripts/workflow/session-archive.sh --list
+   ```
+   This will display all archived sessions with their dates and titles.
+
+3. **Retrieve a specific archive**:
+   ```bash
+   ./scripts/workflow/session-archive.sh --retrieve=YYYYMMDD
+   ```
+   For example, to retrieve the March 12, 2025 session:
+   ```bash
+   ./scripts/workflow/session-archive.sh --retrieve=20250312
+   ```
+
+Archives are automatically created and managed by the session archiving system. You should not need to manually edit or manage these files.

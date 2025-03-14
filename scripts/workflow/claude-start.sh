@@ -132,6 +132,16 @@ if [ -n "$FOCUS_KEYWORDS" ]; then
   git log --name-only --pretty=format: -n 5 | grep -v '^$' | sort | uniq | head -n 5
 fi
 
+# Check for recent archive sessions to provide context continuity
+echo ""
+echo "RECENT ARCHIVED SESSIONS:"
+echo "------------------------------------------------"
+if [ -f "$WORKFLOW_DIR/session-archive.sh" ]; then
+  # List only the last 2 archives
+  "$WORKFLOW_DIR/session-archive.sh" --list | grep -v "Available" | grep -v "-----" | head -n 2
+  echo "Run './scripts/workflow/session-archive.sh --list' to see all archives"
+fi
+
 echo ""
 echo "Claude session is ready to begin!"
 echo "You can now start working with Claude on the Synapse project."
@@ -144,6 +154,10 @@ echo "  - Detailed Guide:  docs/workflow/CLAUDE_WORKFLOW.md"
 echo "  - Testing Guide:   docs/workflow/TEST_DEBUG_WORKFLOW.md"
 echo "  - Dev Instructions: docs/claude/CLAUDE_DEVELOPMENT_INSTRUCTIONS.md"
 echo "  - Module Tracker:  docs/claude/MODULE_TRACKER.md"
+echo ""
+echo "SESSION ARCHIVES:"
+echo "  - List archives:     ./scripts/workflow/session-archive.sh --list"
+echo "  - View archive:      ./scripts/workflow/session-archive.sh --retrieve=YYYYMMDD"
 echo ""
 echo "COMMANDS: (process with ./scripts/workflow/session-commands.sh)"
 echo "  @focus:component   - Set current focus to component"
