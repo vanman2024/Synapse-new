@@ -28,8 +28,8 @@ export class OpenAIService {
    */
   public async generateText(
     prompt: string,
-    maxTokens: number = 500,
-    temperature: number = 0.7
+    maxTokens = 500,
+    temperature = 0.7
   ): Promise<string> {
     try {
       const response = await this.openai.createChatCompletion({

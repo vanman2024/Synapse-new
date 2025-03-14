@@ -1,6 +1,6 @@
-import { v2 as cloudinary } from 'cloudinary';
-import { UploadApiOptions, UploadApiResponse } from 'cloudinary';
+import { v2 as cloudinary, UploadApiOptions, UploadApiResponse } from 'cloudinary';
 import config from '../config';
+import { Readable } from 'stream';
 
 /**
  * Service for interacting with Cloudinary for image storage and processing
@@ -55,7 +55,7 @@ export class CloudinaryService {
           );
           
           // Convert Buffer to Stream and pipe to uploadStream
-          const Readable = require('stream').Readable;
+          // Using imported Readable from stream
           const readableStream = new Readable();
           readableStream.push(imageData);
           readableStream.push(null);

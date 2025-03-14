@@ -13,6 +13,7 @@ declare global {
     // Add any custom properties to Response type
     interface Response {
       // Add custom response methods as needed
+      customMethod?: () => void;
     }
   }
 }
