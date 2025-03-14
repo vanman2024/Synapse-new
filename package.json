@@ -11,8 +11,13 @@
     "test": "jest",
     "lint": "eslint 'src/**/*.{js,ts}'",
     "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "fix-lint": "eslint --fix 'src/**/*.{js,ts}'",
     "setup": "ts-node scripts/setup.ts",
-    "auto-commit": "bash scripts/auto-commit.sh 3"
+    "auto-commit": "bash scripts/auto-commit.sh 3",
+    "validate": "npm run typecheck && npm run lint",
+    "dev:debug": "nodemon --inspect --exec ts-node src/index.ts"
   },
   "keywords": [
     "content",
