@@ -142,6 +142,13 @@ commit_and_push() {
     echo "Error: Could not find auto-session-tracker.sh script"
   fi
   
+  # Log activity to the current session
+  if [ -f "$REPO_DIR/scripts/workflow/session-manager.sh" ]; then
+    # Get list of changed files for logging
+    CHANGED_FILES=$(git status --porcelain | grep -v "^D " | awk '{print $2}' | tr '\n' ' ')
+    bash "$REPO_DIR/scripts/workflow/session-manager.sh" log "commit" "Auto-commit" "$CHANGED_FILES"
+  fi
+  
   # Check if there are changes to commit
   if git status --porcelain | grep -q .; then
     TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")

@@ -14,6 +14,9 @@ LOCK_FILE="$REPO_DIR/.claude-autocommit.lock"
 # Change to repo directory
 cd "$REPO_DIR"
 
+# Start a new session using the session manager
+"$WORKFLOW_DIR/session-manager.sh" start
+
 echo "=================================="
 echo "  SYNAPSE PROJECT - CLAUDE SESSION"
 echo "  $DATE"
