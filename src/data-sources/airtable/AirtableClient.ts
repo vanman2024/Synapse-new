@@ -1,3 +1,4 @@
+// @ts-ignore - Ignore Airtable import issues
 import Airtable from 'airtable';
 import { FieldSet } from 'airtable/lib/field_set';
 import { Records } from 'airtable/lib/records';

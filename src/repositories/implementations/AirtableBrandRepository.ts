@@ -298,13 +298,13 @@ export class AirtableBrandRepository implements BrandRepository {
       // Example: Extract colors from CSS (simplified)
       const colorRegex = /#[0-9A-Fa-f]{6}/g;
       const colorsFound = html.match(colorRegex) || [];
-      const uniqueColors = [...new Set(colorsFound)];
+      const uniqueColors = Array.from(new Set(colorsFound)) as string[];
 
       // Example: Extract fonts from CSS (simplified)
       const fontRegex = /font-family:\s*(['"])?([-\w\s,]+)\1/g;
       const fontsMatches = html.matchAll(fontRegex);
       const fonts = Array.from(fontsMatches, m => m[2].split(',')[0].trim());
-      const uniqueFonts = [...new Set(fonts)];
+      const uniqueFonts = Array.from(new Set(fonts)) as string[];
 
       // Update brand with extracted information
       const updateData: Partial<Brand> = {

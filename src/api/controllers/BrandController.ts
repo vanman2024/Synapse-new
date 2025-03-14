@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AirtableBrandRepository } from '../../repositories/implementations';
 import { Brand } from '../../models';
-import Joi from 'joi';
+import * as Joi from 'joi';
 
 /**
  * Controller for brand-related API endpoints
