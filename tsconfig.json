@@ -5,6 +5,7 @@
     "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./src",
+    // Set to false now, but plan to enable incrementally
     "strict": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -13,17 +14,20 @@
     "resolveJsonModule": true,
     "declaration": true,
     "sourceMap": true,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
+    // Consider enabling these gradually for better type safety
+    "noImplicitAny": false, // Try to enable this first
+    "strictNullChecks": false, // Enable this second
     "strictFunctionTypes": false,
     "strictBindCallApply": false,
     "strictPropertyInitialization": false,
     "noImplicitThis": false,
-    "noUnusedLocals": false,
+    // Consider enabling these for cleaner code
+    "noUnusedLocals": false, // Enable after initial development
     "noUnusedParameters": false,
-    "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": false,
+    "noImplicitReturns": true, // This one's safe to enable now
+    "noFallthroughCasesInSwitch": true, // This one's safe to enable now
     "downlevelIteration": true,
+    // Using older style for import handling
     "importsNotUsedAsValues": "remove",
     "isolatedModules": false
   },

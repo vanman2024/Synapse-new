@@ -56,6 +56,17 @@ run_verification() {
     echo "✅ Type checking passed!"
   fi
   
+  # Build the project
+  echo "Building TypeScript code..."
+  npm run build
+  
+  if [ $? -ne 0 ]; then
+    echo "❌ Build failed!"
+    success=false
+  else
+    echo "✅ Build succeeded! dist/ folder generated."
+  fi
+  
   # Return overall success
   if [ "$success" = true ]; then
     return 0

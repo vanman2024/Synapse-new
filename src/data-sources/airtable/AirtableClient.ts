@@ -172,12 +172,13 @@ export class AirtableClient {
     records: Array<{id: string, fields: Partial<FieldSet>}>
   ): Promise<Array<Airtable.Record<FieldSet>>> {
     try {
-      return await this.getTable(tableName).update(
+      // Use array destructuring to handle the readonly Records type
+      return [...await this.getTable(tableName).update(
         records.map(record => ({
           id: record.id,
           fields: record.fields
         }))
-      );
+      )];
     } catch (error) {
       console.error(`Error updating multiple records in ${tableName}:`, error);
       throw error;

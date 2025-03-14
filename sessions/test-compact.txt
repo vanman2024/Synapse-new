@@ -1,1 +1,0 @@
-<summary>Test compact summary for the session.</summary>

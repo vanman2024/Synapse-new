@@ -15,10 +15,24 @@ module.exports = {
     sourceType: 'module',
   },
   rules: {
-    // Temporarily disable rules that would cause failures
-    '@typescript-eslint/no-explicit-any': 'off',
-    '@typescript-eslint/no-unused-vars': 'off',
-    'no-unused-vars': 'off',
+    // Temporarily allow 'any' type but warn about it
+    '@typescript-eslint/no-explicit-any': 'warn',
+    
+    // Better handling of unused variables
+    '@typescript-eslint/no-unused-vars': ['warn', { 
+      'argsIgnorePattern': '^_',
+      'varsIgnorePattern': '^_',
+      'caughtErrorsIgnorePattern': '^_'
+    }],
+    'no-unused-vars': 'off', // Use the TypeScript version instead
+    
+    // Keep off during development but plan to enable
     'no-undef': 'off',
+    
+    // Additional rules for code quality
+    'no-console': 'warn', // Warn about console.log left in code
+    'no-duplicate-imports': 'error',
+    'no-return-await': 'error', // Return await is redundant
+    'prefer-const': 'warn', // Prefer const over let when possible
   },
 };

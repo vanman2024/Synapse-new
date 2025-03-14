@@ -17,7 +17,7 @@ fi
 
 SUMMARY_FILE="$1"
 DATE=$(date +"%Y%m%d")
-OUTPUT_FILE="sessions/compact-${DATE}.md"
+OUTPUT_FILE="sessions/claude/compact-${DATE}.md"
 
 if [ ! -f "$SUMMARY_FILE" ]; then
   echo "Error: File not found: $SUMMARY_FILE"

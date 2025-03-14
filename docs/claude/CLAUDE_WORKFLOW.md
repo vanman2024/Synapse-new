@@ -27,26 +27,33 @@ The Synapse development workflow includes:
 
 2. **Session Tracking with Compaction and Archiving**
    
-   The Synapse project provides two complementary ways to manage session history:
+   The Synapse project provides several options for managing session history, with full automation of the process:
    
-   **a) Compaction-based Summaries (Recommended):**
-   - At the end of each session, run the session-end.sh script
-   - Use Claude's `/compact` command to generate a concise summary
-   - The summary is added to SESSION.md and stored in `docs/workflow/session-summaries/`
-   - This approach preserves key context without excessive detail
-   - Use this workflow:
+   **a) Automatic Compact Detection (Recommended):**
+   - Start Claude with automatic compact detection:
      ```bash
-     # At the end of your session:
-     ./scripts/workflow/session-end.sh
-     
-     # Follow the instructions to:
-     # 1. Use the /compact command in Claude
-     # 2. Save the summary
-     # 3. Run the script again with the saved file
-     ./scripts/workflow/session-end.sh path/to/summary.txt
+     ./scripts/claude/claude-with-autocompact.sh
      ```
-  
-   **b) Full Session Archiving (Fallback Method):**
+   - Use Claude as normal during your session
+   - When ready, run the `/compact` command in Claude
+   - The system automatically:
+     - Detects the compact summary output
+     - Saves it to both Claude sessions and workflow archives
+     - Updates session indexes
+     - No manual copying or pasting needed
+   
+   **b) Manual Session End:**
+   - If you prefer to manually end a session:
+     ```bash
+     ./scripts/workflow/session-end.sh
+     ```
+   - This script will:
+     - Stop the auto-commit process
+     - Perform a final commit
+     - Prompt you to paste the compact summary output
+     - Save the summary to all archive locations
+   
+   **c) Full Session Archiving System:**
    - `SESSION.md` contains recent sessions (current + previous 2 sessions)
    - New sessions are added to the top of the file
    - Older sessions are automatically archived to `docs/workflow/session-archives/`
@@ -64,6 +71,12 @@ The Synapse development workflow includes:
      ```
    - Archives are automatically tracked by git when created
    - The `claude-start.sh` script shows recent archives for continuity
+   
+   **d) Claude Session Archives:**
+   - Claude sessions are also archived separately in `/sessions/claude/`
+   - This includes compact summaries and full session text
+   - Organized by date and indexed for easy reference
+   - These archives complement the workflow archives
 
 3. **Context Review Process**
    At the beginning of each session, Claude will automatically perform a comprehensive context review:

@@ -64,15 +64,32 @@ export class BrandController {
       // Validate request body
       const schema = Joi.object({
         name: Joi.string().required(),
-        website: Joi.string().uri(),
+        description: Joi.string(),
+        websiteUrl: Joi.string().uri(),
+        website: Joi.string().uri(), // Support legacy field
+        logoUrl: Joi.string().uri(),
         colors: Joi.object({
-          primary: Joi.string().required(),
-          secondary: Joi.array().items(Joi.string()),
-          accent: Joi.array().items(Joi.string())
+          primary: Joi.string(),
+          secondary: Joi.alternatives().try(
+            Joi.array().items(Joi.string()),
+            Joi.string()
+          ),
+          accent: Joi.alternatives().try(
+            Joi.array().items(Joi.string()),
+            Joi.string()
+          ),
+          text: Joi.string(),
+          background: Joi.string()
+        }),
+        fonts: Joi.object({
+          primary: Joi.string(),
+          secondary: Joi.string(),
+          headings: Joi.string(),
+          body: Joi.string()
         }),
         typography: Joi.object({
-          headingFont: Joi.string().required(),
-          bodyFont: Joi.string().required(),
+          headingFont: Joi.string(),
+          bodyFont: Joi.string(),
           fontSize: Joi.object({
             heading: Joi.number(),
             subheading: Joi.number(),
@@ -81,13 +98,31 @@ export class BrandController {
         }),
         logos: Joi.object({
           main: Joi.string(),
-          alternate: Joi.array().items(Joi.string())
+          alternate: Joi.alternatives().try(
+            Joi.array().items(Joi.string()),
+            Joi.string()
+          )
         }),
         style: Joi.object({
           imageStyle: Joi.string(),
           textStyle: Joi.string(),
-          layoutPreferences: Joi.array().items(Joi.string())
-        })
+          layoutPreferences: Joi.alternatives().try(
+            Joi.array().items(Joi.string()),
+            Joi.string()
+          )
+        }),
+        socialMedia: Joi.object({
+          facebook: Joi.string(),
+          instagram: Joi.string(),
+          twitter: Joi.string(),
+          linkedin: Joi.string(),
+          youtube: Joi.string(),
+          tiktok: Joi.string()
+        }),
+        industry: Joi.string(),
+        targetAudience: Joi.array().items(Joi.string()),
+        toneOfVoice: Joi.string(),
+        keyMessages: Joi.array().items(Joi.string())
       });
 
       const { error, value } = schema.validate(req.body);
@@ -127,11 +162,28 @@ export class BrandController {
       // Validate request body
       const schema = Joi.object({
         name: Joi.string(),
-        website: Joi.string().uri(),
+        description: Joi.string(),
+        websiteUrl: Joi.string().uri(),
+        website: Joi.string().uri(), // Support legacy field
+        logoUrl: Joi.string().uri(),
         colors: Joi.object({
           primary: Joi.string(),
-          secondary: Joi.array().items(Joi.string()),
-          accent: Joi.array().items(Joi.string())
+          secondary: Joi.alternatives().try(
+            Joi.array().items(Joi.string()),
+            Joi.string()
+          ),
+          accent: Joi.alternatives().try(
+            Joi.array().items(Joi.string()),
+            Joi.string()
+          ),
+          text: Joi.string(),
+          background: Joi.string()
+        }),
+        fonts: Joi.object({
+          primary: Joi.string(),
+          secondary: Joi.string(),
+          headings: Joi.string(),
+          body: Joi.string()
         }),
         typography: Joi.object({
           headingFont: Joi.string(),
@@ -144,13 +196,31 @@ export class BrandController {
         }),
         logos: Joi.object({
           main: Joi.string(),
-          alternate: Joi.array().items(Joi.string())
+          alternate: Joi.alternatives().try(
+            Joi.array().items(Joi.string()),
+            Joi.string()
+          )
         }),
         style: Joi.object({
           imageStyle: Joi.string(),
           textStyle: Joi.string(),
-          layoutPreferences: Joi.array().items(Joi.string())
-        })
+          layoutPreferences: Joi.alternatives().try(
+            Joi.array().items(Joi.string()),
+            Joi.string()
+          )
+        }),
+        socialMedia: Joi.object({
+          facebook: Joi.string(),
+          instagram: Joi.string(),
+          twitter: Joi.string(),
+          linkedin: Joi.string(),
+          youtube: Joi.string(),
+          tiktok: Joi.string()
+        }),
+        industry: Joi.string(),
+        targetAudience: Joi.array().items(Joi.string()),
+        toneOfVoice: Joi.string(),
+        keyMessages: Joi.array().items(Joi.string())
       });
 
       const { error, value } = schema.validate(req.body);

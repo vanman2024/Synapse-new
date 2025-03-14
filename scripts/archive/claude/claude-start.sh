@@ -3,10 +3,12 @@
 # claude-start.sh - Run this at the beginning of each Claude session
 # Automatically starts the auto-commit script and displays session status
 
+# Get the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the repository root directory
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # Get the workflow directory
-WORKFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Get the repository root directory (two levels up from the workflow dir)
-REPO_DIR="$(cd "$WORKFLOW_DIR/../.." && pwd)"
+WORKFLOW_DIR="$REPO_DIR/scripts/workflow"
 SESSION_FILE="$REPO_DIR/SESSION.md"
 DATE=$(date +"%B %d, %Y")
 LOCK_FILE="$REPO_DIR/.claude-autocommit.lock"
@@ -35,7 +37,7 @@ else
   
   # Start auto-commit script in background
   cd "$REPO_DIR"
-  nohup "$REPO_DIR/scripts/auto-commit.sh" > "$REPO_DIR/logs/system/auto-commit.log" 2>&1 &
+  nohup "$WORKFLOW_DIR/auto-commit.sh" > "$REPO_DIR/logs/system/auto-commit.log" 2>&1 &
   
   # Script now writes its own PID to lock file
   sleep 1
@@ -149,20 +151,25 @@ echo "Auto-commit will run automatically every 5 minutes."
 echo "All your changes will be tracked in SESSION.md automatically."
 echo ""
 echo "DOCUMENTATION:"
-echo "  - Quick Reference: docs/workflow/CLAUDE_README.md"
-echo "  - Detailed Guide:  docs/workflow/CLAUDE_WORKFLOW.md"
+echo "  - Quick Reference: docs/workflow/WORKFLOW.md"
 echo "  - Testing Guide:   docs/workflow/TEST_DEBUG_WORKFLOW.md"
+echo "  - Claude Sessions: docs/claude/sessions/SESSIONS.md"
 echo "  - Dev Instructions: docs/claude/CLAUDE_DEVELOPMENT_INSTRUCTIONS.md"
-echo "  - Module Tracker:  docs/claude/MODULE_TRACKER.md"
+echo "  - Project Organization: docs/PROJECT_ORGANIZATION.md"
 echo ""
 echo "SESSION ARCHIVES:"
 echo "  - List archives:     ./scripts/workflow/session-archive.sh --list"
 echo "  - View archive:      ./scripts/workflow/session-archive.sh --retrieve=YYYYMMDD"
 echo ""
+echo "CLAUDE WITH AUTO-COMPACT:"
+echo "  - Start Claude:      ./scripts/claude/claude-with-autocompact.sh"
+echo "  - This auto-detects when you use the /compact command"
+echo "  - The summary is automatically saved without manual copying"
+echo ""
 echo "SESSION END WORKFLOW:"
 echo "  - End session:       ./scripts/workflow/session-end.sh"
 echo "  - This will prompt you to use the /compact command in Claude"
-echo "  - The summary will be saved to SESSION.md and docs/workflow/session-summaries/"
+echo "  - The summary will be saved to SESSION.md, sessions/claude/, and docs/workflow/session-archives/"
 echo ""
 echo "COMMANDS: (process with ./scripts/workflow/session-commands.sh)"
 echo "  @focus:component   - Set current focus to component"

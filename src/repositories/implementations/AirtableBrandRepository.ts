@@ -32,12 +32,23 @@ export class AirtableBrandRepository implements BrandRepository {
     return {
       id: record.id,
       name: record.Name,
-      website: record.Website,
+      description: record.Description,
+      websiteUrl: record.Website, // Primary field
+      website: record.Website, // Legacy field (same as websiteUrl)
+      logoUrl: record.LogoUrl,
       colors: {
         primary: record.PrimaryColor,
         secondary: record.SecondaryColors ? record.SecondaryColors.split(',').map((c: string) => c.trim()) : [],
-        accent: record.AccentColors ? record.AccentColors.split(',').map((c: string) => c.trim()) : []
+        accent: record.AccentColors ? record.AccentColors.split(',').map((c: string) => c.trim()) : [],
+        text: record.TextColor,
+        background: record.BackgroundColor
       },
+      fonts: record.Fonts ? {
+        primary: record.Fonts.primary,
+        secondary: record.Fonts.secondary,
+        headings: record.Fonts.headings,
+        body: record.Fonts.body
+      } : undefined,
       typography: {
         headingFont: record.HeadingFont,
         bodyFont: record.BodyFont,
@@ -56,6 +67,11 @@ export class AirtableBrandRepository implements BrandRepository {
         textStyle: record.TextStyle,
         layoutPreferences: record.LayoutPreferences || []
       },
+      socialMedia: record.SocialMedia,
+      industry: record.Industry,
+      targetAudience: record.TargetAudience,
+      toneOfVoice: record.ToneOfVoice,
+      keyMessages: record.KeyMessages,
       createdAt: new Date(record.CreatedAt || record._createdTime),
       updatedAt: new Date(record.UpdatedAt || record._updatedTime)
     };
@@ -70,7 +86,16 @@ export class AirtableBrandRepository implements BrandRepository {
     const record: Partial<FieldSet> = {};
 
     if (brand.name) record.Name = brand.name;
-    if (brand.website) record.Website = brand.website;
+    if (brand.description) record.Description = brand.description;
+    
+    // Handle both website and websiteUrl (preferring websiteUrl if both exist)
+    if (brand.websiteUrl) {
+      record.Website = brand.websiteUrl;
+    } else if (brand.website) {
+      record.Website = brand.website;
+    }
+    
+    if (brand.logoUrl) record.LogoUrl = brand.logoUrl;
 
     if (brand.colors) {
       if (brand.colors.primary) record.PrimaryColor = brand.colors.primary;
@@ -90,6 +115,18 @@ export class AirtableBrandRepository implements BrandRepository {
           record.AccentColors = brand.colors.accent;
         }
       }
+      
+      if (brand.colors.text) record.TextColor = brand.colors.text;
+      if (brand.colors.background) record.BackgroundColor = brand.colors.background;
+    }
+
+    if (brand.fonts) {
+      record.Fonts = {
+        primary: brand.fonts.primary,
+        secondary: brand.fonts.secondary,
+        headings: brand.fonts.headings,
+        body: brand.fonts.body
+      } as any; // Cast to any to avoid FieldSet type issues
     }
 
     if (brand.typography) {
@@ -126,6 +163,12 @@ export class AirtableBrandRepository implements BrandRepository {
         }
       }
     }
+    
+    if (brand.socialMedia) record.SocialMedia = brand.socialMedia as any;
+    if (brand.industry) record.Industry = brand.industry;
+    if (brand.targetAudience) record.TargetAudience = brand.targetAudience;
+    if (brand.toneOfVoice) record.ToneOfVoice = brand.toneOfVoice;
+    if (brand.keyMessages) record.KeyMessages = brand.keyMessages;
 
     record.UpdatedAt = new Date().toISOString();
 
@@ -308,7 +351,8 @@ export class AirtableBrandRepository implements BrandRepository {
 
       // Update brand with extracted information
       const updateData: Partial<Brand> = {
-        website: websiteUrl,
+        websiteUrl: websiteUrl,
+        website: websiteUrl, // For backward compatibility
         style: {
           imageStyle: 'professional' // Default style
         }
