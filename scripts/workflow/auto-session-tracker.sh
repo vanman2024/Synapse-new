@@ -58,34 +58,45 @@ sed -i "s/## Current Session:.*$/## Current Session: $DATE ($TIME)/" "$SESSION_F
 sed -i "s/- Currently on:.*$/- Currently on: $BRANCH branch/" "$SESSION_FILE"
 
 # Check for sprint information and update if present
-if grep -q "### Current Sprint" "$SESSION_FILE"; then
-  # Get current sprint info
-  SPRINT_INFO=$(grep -A 3 "### Current Sprint" "$SESSION_FILE")
+# Using awk instead of grep to avoid character issues
+if awk '/### Current Sprint/ {found=1} END {exit !found}' "$SESSION_FILE"; then
+  # Use awk to safely extract sprint information
+  SPRINT_END_DATE=$(awk '/- End:/ {print $3}' "$SESSION_FILE" | head -1)
   
-  # Calculate days remaining if end date is present
-  if echo "$SPRINT_INFO" | grep -q "- End:"; then
-    SPRINT_END=$(echo "$SPRINT_INFO" | grep "- End:" | cut -d ":" -f 2 | xargs)
-    DAYS_REMAINING=$(( ($(date -d "$SPRINT_END" +%s) - $(date +%s)) / 86400 ))
-    
-    # Update days remaining
-    sed -i "/- Days remaining:/c\\- Days remaining: $DAYS_REMAINING days" "$SESSION_FILE"
-  fi
-else
-  # If no sprint info exists, add placeholder section
-  if ! grep -q "### Current Sprint" "$SESSION_FILE"; then
-    # Find the right place to insert sprint info (after Project Status section)
-    PROJECT_LINE=$(grep -n "#### Project Status" "$SESSION_FILE" | cut -d ":" -f 1)
-    if [ -n "$PROJECT_LINE" ]; then
-      PROJECT_END=$(grep -n "#### Current Focus" "$SESSION_FILE" | cut -d ":" -f 1)
-      PROJECT_END=$((PROJECT_END - 1))
+  # Calculate days remaining if end date is present and valid
+  if [ -n "$SPRINT_END_DATE" ] && [[ ! "$SPRINT_END_DATE" =~ ^\(.*$ ]]; then
+    # Try to calculate days remaining
+    if date -d "$SPRINT_END_DATE" >/dev/null 2>&1; then
+      DAYS_REMAINING=$(( ($(date -d "$SPRINT_END_DATE" +%s) - $(date +%s)) / 86400 ))
       
-      # Create sprint section
-      SPRINT_SECTION="\n### Current Sprint\n- Name: (Not set)\n- Start: $(date +"%Y-%m-%d")\n- End: (Not set)\n- Days remaining: (Not set)\n- Progress: 0%\n\n"
-      
-      # Insert after project status section
-      sed -i "${PROJECT_END}a ${SPRINT_SECTION}" "$SESSION_FILE"
+      # Update days remaining - using awk for safer in-place editing
+      awk -v remaining="$DAYS_REMAINING" '{
+        if ($0 ~ /- Days remaining:/) {
+          print "- Days remaining: " remaining " days"
+        } else {
+          print $0
+        }
+      }' "$SESSION_FILE" > "${SESSION_FILE}.tmp" && mv "${SESSION_FILE}.tmp" "$SESSION_FILE"
     fi
   fi
+else
+  # If no sprint info exists, add placeholder section using awk
+  # This creates a temporary file with sprint info added and replaces the original
+  awk -v today="$(date +"%Y-%m-%d")" '
+    /#### Project Status/ {in_status=1}
+    /#### Current Focus/ {
+      if (in_status) {
+        print "\n### Current Sprint";
+        print "- Name: (Not set)";
+        print "- Start: " today;
+        print "- End: (Not set)";
+        print "- Days remaining: (Not set)";
+        print "- Progress: 0%\n";
+      }
+      in_status=0;
+    }
+    {print}
+  ' "$SESSION_FILE" > "${SESSION_FILE}.tmp" && mv "${SESSION_FILE}.tmp" "$SESSION_FILE"
 fi
 
 # Count lines added/removed in recent changes
@@ -128,8 +139,59 @@ $LAST_COMMIT_FILES
 EOF
 )
 
-# Replace the Last Activity section
-sed -i "/#### Last Activity/,/#### Next Tasks/c\\#### Last Activity\\n$ICON **$(date +"%H:%M")** - ${LAST_COMMIT_MSG}${LINES_CHANGED}\\n- Modified files:\\n\`\`\`\\n$LAST_COMMIT_FILES\\n\`\`\`\\n\\n#### Next Tasks" "$SESSION_FILE"
+# Create safe variables for awk
+TIME_NOW=$(date +"%H:%M")
+COMMIT_MSG_SAFE=$(echo "$LAST_COMMIT_MSG" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed "s/'/\\\\'/g")
+COMMIT_FILES_SAFE=$(echo "$LAST_COMMIT_FILES" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed "s/'/\\\\'/g")
+LINES_CHANGED_SAFE=$(echo "$LINES_CHANGED" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed "s/'/\\\\'/g")
+
+# Create a temporary file for safer file operations
+TMP_FILE=$(mktemp)
+
+# Update the Last Activity section with awk
+awk -v icon="$ICON" -v time="$TIME_NOW" -v msg="$COMMIT_MSG_SAFE" -v files="$COMMIT_FILES_SAFE" -v lines="$LINES_CHANGED_SAFE" '
+  /#### Last Activity/ {
+    print "#### Last Activity";
+    print icon " **" time "** - " msg lines;
+    print "- Modified files:";
+    print "```";
+    print files;
+    print "```";
+    print "";
+    looking_for_next_tasks = 1;
+    next;
+  }
+  
+  /#### Next Tasks/ {
+    looking_for_next_tasks = 0;
+  }
+  
+  {
+    if (!looking_for_next_tasks) print;
+  }
+' "$SESSION_FILE" > "$TMP_FILE"
+
+# If Last Activity section wasn't found, add it before Next Tasks
+if ! grep -q "#### Last Activity" "$TMP_FILE"; then
+  awk -v icon="$ICON" -v time="$TIME_NOW" -v msg="$COMMIT_MSG_SAFE" -v files="$COMMIT_FILES_SAFE" -v lines="$LINES_CHANGED_SAFE" '
+    /#### Next Tasks/ {
+      print "#### Last Activity";
+      print icon " **" time "** - " msg lines;
+      print "- Modified files:";
+      print "```";
+      print files;
+      print "```";
+      print "";
+      print $0;
+      next;
+    }
+    { print }
+  ' "$SESSION_FILE" > "$TMP_FILE"
+fi
+
+# Replace the original file with our updated version
+cat "$TMP_FILE" > "$SESSION_FILE"
+rm "$TMP_FILE"
 
 # Add SESSION.md to git (will be committed by auto-commit script)
 git add "$SESSION_FILE"

@@ -43,18 +43,30 @@ get_tracked_files() {
   # If .autocommitignore exists, filter files using grep -v
   IGNORE_FILE="$REPO_DIR/.autocommitignore"
   if [ -f "$IGNORE_FILE" ]; then
-    # Create a grep pattern from .autocommitignore, excluding comments and blank lines
-    IGNORE_PATTERN=$(grep -v "^#" "$IGNORE_FILE" | grep -v "^$" | sed 's/\*/\\*/g' | sed 's/\./\\./g' | sed 's/^/^/' | sed 's/$//')
-    if [ -n "$IGNORE_PATTERN" ]; then
+    # Create a temporary filtered ignore file without comments and blank lines
+    TEMP_IGNORE_FILE="/tmp/temp_ignore_patterns.txt"
+    grep -v "^#" "$IGNORE_FILE" | grep -v "^$" > "$TEMP_IGNORE_FILE"
+    
+    if [ -s "$TEMP_IGNORE_FILE" ]; then
       # Filter out ignored files
       TRACKED_FILES=""
       for FILE in $ALL_CHANGES; do
-        if ! echo "$FILE" | grep -q -f "$IGNORE_FILE"; then
+        IGNORE_THIS=false
+        while IFS= read -r PATTERN; do
+          if [[ "$FILE" == $PATTERN ]]; then
+            IGNORE_THIS=true
+            break
+          fi
+        done < "$TEMP_IGNORE_FILE"
+        
+        if [ "$IGNORE_THIS" = false ]; then
           TRACKED_FILES="$TRACKED_FILES $FILE"
         fi
       done
+      rm -f "$TEMP_IGNORE_FILE"
       echo "$TRACKED_FILES"
     else
+      rm -f "$TEMP_IGNORE_FILE"
       echo "$ALL_CHANGES"
     fi
   else
@@ -112,8 +124,10 @@ commit_and_push() {
   
   # Run the session tracker to update SESSION.md with details
   if [ -f "$REPO_DIR/scripts/workflow/auto-session-tracker.sh" ]; then
-    $REPO_DIR/scripts/workflow/auto-session-tracker.sh
+    bash "$REPO_DIR/scripts/workflow/auto-session-tracker.sh"
     echo "Updated SESSION.md with latest activity"
+  else
+    echo "Error: Could not find auto-session-tracker.sh script"
   fi
   
   # Check if there are changes to commit
