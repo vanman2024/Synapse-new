@@ -116,7 +116,7 @@ start_session() {
     
     # Update SESSION.md with the session ID by creating a temporary file
     CURRENT_DATE=$(date +"%B %d, %Y")
-    SESSION_HEADER="## Current Session: $CURRENT_DATE (ID: $NEW_SESSION_ID)"
+    SESSION_HEADER="## Current Session: $CURRENT_DATE - ID $NEW_SESSION_ID"
     
     # Replace the session header using a temporary file
     sed "s/## Current Session:.*$/$SESSION_HEADER/" "$SESSION_FILE" > "$SESSION_FILE.tmp"

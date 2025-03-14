@@ -1,6 +1,15 @@
 # Claude AI Development Workflow
 
-This document explains how to use Claude AI effectively with this project, including our automated tracking and commit system.
+This document explains how to use Claude AI effectively with this project, including our automated tracking, session management, and commit system.
+
+## Overview
+
+The Synapse development workflow includes:
+
+1. **Session Management**: Each development session is assigned a unique ID for tracking
+2. **Auto-commit**: Changes are committed automatically at regular intervals
+3. **Session Tracking**: All activities are recorded in SESSION.md and session storage
+4. **Continuity**: New sessions can access previous session data for context
 
 ## Getting Started with Claude
 
