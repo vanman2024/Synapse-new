@@ -25,7 +25,28 @@ The Synapse development workflow includes:
    - Displays current project status and focus
    - Sets up git hooks if needed
 
-2. **Session Tracking and Archiving**
+2. **Session Tracking with Compaction and Archiving**
+   
+   The Synapse project provides two complementary ways to manage session history:
+   
+   **a) Compaction-based Summaries (Recommended):**
+   - At the end of each session, run the session-end.sh script
+   - Use Claude's `/compact` command to generate a concise summary
+   - The summary is added to SESSION.md and stored in `docs/workflow/session-summaries/`
+   - This approach preserves key context without excessive detail
+   - Use this workflow:
+     ```bash
+     # At the end of your session:
+     ./scripts/workflow/session-end.sh
+     
+     # Follow the instructions to:
+     # 1. Use the /compact command in Claude
+     # 2. Save the summary
+     # 3. Run the script again with the saved file
+     ./scripts/workflow/session-end.sh path/to/summary.txt
+     ```
+  
+   **b) Full Session Archiving (Fallback Method):**
    - `SESSION.md` contains recent sessions (current + previous 2 sessions)
    - New sessions are added to the top of the file
    - Older sessions are automatically archived to `docs/workflow/session-archives/`

@@ -2,6 +2,10 @@
 
 This directory contains archived activities from SESSION.md to prevent file bloat.
 
+> **Note**: While this archiving system is still supported, the recommended approach 
+> is now to use the compaction-based workflow with `session-end.sh`. See
+> `docs/workflow/session-summaries/README.md` for details on the preferred approach.
+
 Archives are automatically created when SESSION.md grows beyond 300 lines, preserving older activity records while keeping the main SESSION.md file manageable.
 
 ## Archive Format
