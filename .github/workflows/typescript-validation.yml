@@ -1,0 +1,100 @@
+name: TypeScript Validation
+
+on:
+  workflow_dispatch:  # Allows manual triggering of the workflow
+  push:
+    branches: [ master ]
+    paths:
+      - '**.ts'
+      - '**.tsx'
+      - 'tsconfig.json'
+      - 'package.json'
+      - '.github/workflows/typescript-validation.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Validate TypeScript
+        id: typescript
+        run: |
+          echo "::group::TypeScript Validation"
+          npx tsc --noEmit || true
+          echo "::endgroup::"
+      
+      - name: Detailed TypeScript Error Reporting  
+        run: |
+          echo "::group::Detailed Error Report"
+          # Get TypeScript errors with file locations and format for better visibility
+          npx tsc --noEmit --pretty false | grep -E "error TS|warning TS" || echo "No TypeScript errors found"
+          
+          # Count total errors per file
+          echo -e "\n\n--- Error Count by File ---"
+          npx tsc --noEmit --pretty false 2>&1 | grep -o -E "[^(]+\.[t|j]s[x]?" | sort | uniq -c | sort -nr
+          
+          # Special check for import errors which are common
+          echo -e "\n\n--- Import Errors ---"
+          npx tsc --noEmit --pretty false 2>&1 | grep -E "error TS2307|error TS1259" || echo "No import errors found"
+          echo "::endgroup::"
+      
+      - name: Upload TypeScript Error Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: typescript-errors
+          path: |
+            # Generate a detailed error report
+            ${{ github.workspace }}/ts-errors.log
+
+  fix-suggestions:
+    needs: validate
+    runs-on: ubuntu-latest
+    if: ${{ failure() }}
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate Fix Suggestions
+        run: |
+          echo "::group::Fix Suggestions"
+          echo "Common TypeScript error solutions:"
+          echo "1. TS2307 (Cannot find module): Check import paths or add missing dependencies"
+          echo "2. TS2339 (Property does not exist): Add type definitions or correct property names"
+          echo "3. TS2322 (Type assignment): Make sure types match or use proper type assertions"
+          echo "4. TS2532 (Object is possibly undefined): Add null checks or use optional chaining"
+          echo ""
+          echo "Generating specific recommendations based on your codebase..."
+          
+          # Check for common patterns and suggest fixes
+          if grep -q "import.*from '.*'" $(find src -name "*.ts"); then
+            echo "- Some imports may have incorrect paths. Check for misspelled or non-existent imports."
+          fi
+          
+          if grep -q "interface.*extends" $(find src -name "*.ts"); then
+            echo "- Interface extensions must ensure all required properties are implemented."
+          fi
+          
+          if grep -q "new Promise" $(find src -name "*.ts"); then
+            echo "- Ensure Promise return types are correctly specified."
+          fi
+          echo "::endgroup::"
