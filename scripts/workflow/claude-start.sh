@@ -27,11 +27,21 @@ mkdir -p "$LOG_DIR"
 if [ -f "$LOCK_FILE" ] && ps -p $(cat "$LOCK_FILE") > /dev/null; then
   echo "✅ Auto-commit is already running with PID $(cat "$LOCK_FILE")"
 else
-  # Start auto-commit script in background and save PID
+  # Make sure logs directory exists
+  mkdir -p "$REPO_DIR/logs/system"
+  
+  # Start auto-commit script in background
+  cd "$REPO_DIR"
   nohup "$REPO_DIR/scripts/auto-commit.sh" > "$REPO_DIR/logs/system/auto-commit.log" 2>&1 &
-  echo $! > "$LOCK_FILE"
-  echo "✅ Started auto-commit script with PID $(cat "$LOCK_FILE")"
-  echo "   Output is being logged to logs/system/auto-commit.log"
+  
+  # Script now writes its own PID to lock file
+  sleep 1
+  if [ -f "$LOCK_FILE" ]; then
+    echo "✅ Started auto-commit script with PID $(cat "$LOCK_FILE")"
+    echo "   Output is being logged to logs/system/auto-commit.log"
+  else
+    echo "❌ Failed to start auto-commit script"
+  fi
 fi
 
 # Install git hooks if they're not already set up

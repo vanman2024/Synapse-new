@@ -8,27 +8,15 @@ INTERVAL=${1:-5}
 REPO_DIR="$(pwd)"
 TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
-# Set the lock file path
-LOCK_FILE="$REPO_DIR/.claude-autocommit.lock"
-LOG_DIR="$REPO_DIR/logs/system"
-LOG_FILE="$LOG_DIR/auto-commit.log"
-
-# Ensure log directory exists
-mkdir -p "$LOG_DIR"
-
 echo "Auto-commit script started at $TIMESTAMP"
 echo "Working in: $REPO_DIR"
 echo "Commit interval: $INTERVAL minutes"
-echo "Log file: $LOG_FILE"
 
 # Make sure we're in a git repository
 if [ ! -d "$REPO_DIR/.git" ]; then
   echo "Error: Not a git repository"
   exit 1
 fi
-
-# Save our PID to the lock file
-echo $$ > "$LOCK_FILE"
 
 # Function to update the SESSION.md file with commit information
 update_session_file() {
