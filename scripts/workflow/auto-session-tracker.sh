@@ -19,36 +19,10 @@ CHANGE_TYPE=$(echo "$LAST_COMMIT_MSG" | grep -o "Auto-commit (\w*)" | sed 's/Aut
 # Create archive directory if it doesn't exist
 mkdir -p "$ARCHIVE_DIR"
 
-# Archive older activity if SESSION.md is getting too large (> 300 lines)
-SESSION_LINES=$(wc -l < "$SESSION_FILE")
-if [ "$SESSION_LINES" -gt 300 ]; then
-  # Extract date to use in archive filename
-  ARCHIVE_DATE=$(date +"%Y%m%d")
-  # Create archive filename
-  ARCHIVE_FILE="$ARCHIVE_DIR/session_${ARCHIVE_DATE}.md"
-  
-  # Extract older activity sections to archive
-  grep -n "#### Last Activity" "$SESSION_FILE" | head -n -3 | cut -d ":" -f 1 > /tmp/activity_lines.txt
-  if [ -s /tmp/activity_lines.txt ]; then
-    START_LINE=$(head -n 1 /tmp/activity_lines.txt)
-    END_LINE=$(tail -n 1 /tmp/activity_lines.txt)
-    
-    # Add header to archive file if it doesn't exist
-    if [ ! -f "$ARCHIVE_FILE" ]; then
-      echo "# Archived Session Activities - $DATE" > "$ARCHIVE_FILE"
-      echo "" >> "$ARCHIVE_FILE"
-    fi
-    
-    # Append activities to archive
-    echo "## Activities from $(date +"%Y-%m-%d")" >> "$ARCHIVE_FILE"
-    sed -n "${START_LINE},${END_LINE}p" "$SESSION_FILE" >> "$ARCHIVE_FILE"
-    echo "" >> "$ARCHIVE_FILE"
-    
-    # Remove old activities from SESSION.md (keep only last 3)
-    sed -i "/${START_LINE},${END_LINE}d" "$SESSION_FILE"
-    
-    echo "Archived older activities to $ARCHIVE_FILE"
-  fi
+# Run the session archiver to keep SESSION.md manageable
+# This keeps the most recent 3 sessions and archives older ones
+if [ -f "$WORKFLOW_DIR/session-archive.sh" ]; then
+  bash "$WORKFLOW_DIR/session-archive.sh"
 fi
 
 # Update session date

@@ -53,8 +53,37 @@ if [ ! -x "$REPO_DIR/.git/hooks/pre-commit" ]; then
   bash "$WORKFLOW_DIR/setup-hooks.sh"
 fi
 
-# Update SESSION.md with current date
-sed -i "s/## Current Session:.*$/## Current Session: $DATE/" "$SESSION_FILE"
+# Create a new session at the top of SESSION.md
+# This preserves previous sessions and adds a new current session
+TMP_FILE=$(mktemp)
+
+# Add new session to the top
+echo "# Synapse Development Session Log" > "$TMP_FILE"
+echo "" >> "$TMP_FILE"
+echo "## Current Session: $DATE" >> "$TMP_FILE"
+echo "" >> "$TMP_FILE"
+echo "### Session Goals" >> "$TMP_FILE"
+echo "- Continue development on current modules" >> "$TMP_FILE"
+echo "- Fix any outstanding issues" >> "$TMP_FILE"
+echo "- Improve project structure and organization" >> "$TMP_FILE"
+echo "" >> "$TMP_FILE"
+
+# If SESSION.md exists, append everything after the first session header
+if [ -f "$SESSION_FILE" ]; then
+  # Find the line number of the first "## Current Session" line
+  FIRST_SESSION=$(grep -n "^## Current Session:" "$SESSION_FILE" | head -n 1 | cut -d: -f1)
+  
+  if [ -n "$FIRST_SESSION" ]; then
+    # Extract the existing content without the header
+    tail -n +$FIRST_SESSION "$SESSION_FILE" >> "$TMP_FILE"
+  else
+    # If no session header found, just append the entire file
+    cat "$SESSION_FILE" >> "$TMP_FILE"
+  fi
+fi
+
+# Replace SESSION.md with our new version
+mv "$TMP_FILE" "$SESSION_FILE"
 
 # Show current branch
 CURRENT_BRANCH=$(git branch --show-current)

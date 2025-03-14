@@ -25,10 +25,12 @@ The Synapse development workflow includes:
    - Displays current project status and focus
    - Sets up git hooks if needed
 
-2. **Session Tracking**
-   - `SESSION.md` contains all current project status and focus
-   - This file is automatically updated with each commit
-   - No need to manually track progress between sessions
+2. **Session Tracking and Archiving**
+   - `SESSION.md` contains recent sessions (current + previous 2-3 sessions)
+   - New sessions are added to the top of the file
+   - Older sessions are automatically archived to `docs/workflow/session-archives/`
+   - Archives are organized by date for easy retrieval
+   - Access archives with `./scripts/workflow/session-archive.sh --list` and `--retrieve=YYYYMMDD`
 
 3. **Context Review Process**
    At the beginning of each session, Claude will automatically perform a comprehensive context review:
