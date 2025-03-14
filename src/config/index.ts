@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'fs';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as fs from 'fs';
 
 // Load environment variables from .env file
 dotenv.config();

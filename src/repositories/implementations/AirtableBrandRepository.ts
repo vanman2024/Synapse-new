@@ -74,29 +74,57 @@ export class AirtableBrandRepository implements BrandRepository {
 
     if (brand.colors) {
       if (brand.colors.primary) record.PrimaryColor = brand.colors.primary;
-      if (brand.colors.secondary) record.SecondaryColors = brand.colors.secondary.join(', ');
-      if (brand.colors.accent) record.AccentColors = brand.colors.accent.join(', ');
+      
+      if (brand.colors.secondary) {
+        if (Array.isArray(brand.colors.secondary)) {
+          record.SecondaryColors = brand.colors.secondary.join(', ');
+        } else {
+          record.SecondaryColors = brand.colors.secondary;
+        }
+      }
+      
+      if (brand.colors.accent) {
+        if (Array.isArray(brand.colors.accent)) {
+          record.AccentColors = brand.colors.accent.join(', ');
+        } else {
+          record.AccentColors = brand.colors.accent;
+        }
+      }
     }
 
     if (brand.typography) {
       if (brand.typography.headingFont) record.HeadingFont = brand.typography.headingFont;
       if (brand.typography.bodyFont) record.BodyFont = brand.typography.bodyFont;
-      if (brand.typography.fontSize) record.FontSizes = {
-        heading: brand.typography.fontSize.heading,
-        subheading: brand.typography.fontSize.subheading,
-        body: brand.typography.fontSize.body
-      };
+      if (brand.typography.fontSize) {
+        record.FontSizes = {
+          heading: brand.typography.fontSize.heading,
+          subheading: brand.typography.fontSize.subheading,
+          body: brand.typography.fontSize.body
+        } as any; // Cast to any to avoid FieldSet type issues
+      }
     }
 
     if (brand.logos) {
       if (brand.logos.main) record.MainLogo = brand.logos.main;
-      if (brand.logos.alternate) record.AlternateLogos = brand.logos.alternate;
+      if (brand.logos.alternate) {
+        if (Array.isArray(brand.logos.alternate)) {
+          record.AlternateLogos = brand.logos.alternate;
+        } else {
+          record.AlternateLogos = [brand.logos.alternate];
+        }
+      }
     }
 
     if (brand.style) {
       if (brand.style.imageStyle) record.ImageStyle = brand.style.imageStyle;
       if (brand.style.textStyle) record.TextStyle = brand.style.textStyle;
-      if (brand.style.layoutPreferences) record.LayoutPreferences = brand.style.layoutPreferences;
+      if (brand.style.layoutPreferences) {
+        if (Array.isArray(brand.style.layoutPreferences)) {
+          record.LayoutPreferences = brand.style.layoutPreferences;
+        } else {
+          record.LayoutPreferences = [brand.style.layoutPreferences];
+        }
+      }
     }
 
     record.UpdatedAt = new Date().toISOString();

@@ -23,6 +23,12 @@ export interface Brand {
   websiteUrl?: string;
   
   /**
+   * Website URL (legacy field)
+   * @deprecated Use websiteUrl instead
+   */
+  website?: string;
+  
+  /**
    * Brand logo URL
    */
   logoUrl?: string;
@@ -32,8 +38,8 @@ export interface Brand {
    */
   colors?: {
     primary?: string;
-    secondary?: string;
-    accent?: string;
+    secondary?: string[] | string;
+    accent?: string[] | string;
     text?: string;
     background?: string;
   };
@@ -46,6 +52,36 @@ export interface Brand {
     secondary?: string;
     headings?: string;
     body?: string;
+  };
+  
+  /**
+   * Typography settings
+   */
+  typography?: {
+    headingFont?: string;
+    bodyFont?: string;
+    fontSize?: {
+      heading?: number;
+      subheading?: number;
+      body?: number;
+    };
+  };
+  
+  /**
+   * Logo information
+   */
+  logos?: {
+    main?: string;
+    alternate?: string[] | string;
+  };
+  
+  /**
+   * Style information
+   */
+  style?: {
+    imageStyle?: string;
+    textStyle?: string;
+    layoutPreferences?: string[] | string;
   };
   
   /**
