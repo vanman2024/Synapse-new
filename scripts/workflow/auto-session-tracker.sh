@@ -150,31 +150,13 @@ TMP_FILE=$(mktemp)
 
 # Update the Last Activity section with awk
 awk -v icon="$ICON" -v time="$TIME_NOW" -v msg="$COMMIT_MSG_SAFE" -v files="$COMMIT_FILES_SAFE" -v lines="$LINES_CHANGED_SAFE" '
+  BEGIN { 
+    found_activity = 0;
+    found_next_tasks = 0;
+  }
+  
   /#### Last Activity/ {
-    print "#### Last Activity";
-    print icon " **" time "** - " msg lines;
-    print "- Modified files:";
-    print "```";
-    print files;
-    print "```";
-    print "";
-    looking_for_next_tasks = 1;
-    next;
-  }
-  
-  /#### Next Tasks/ {
-    looking_for_next_tasks = 0;
-  }
-  
-  {
-    if (!looking_for_next_tasks) print;
-  }
-' "$SESSION_FILE" > "$TMP_FILE"
-
-# If Last Activity section wasn't found, add it before Next Tasks
-if ! grep -q "#### Last Activity" "$TMP_FILE"; then
-  awk -v icon="$ICON" -v time="$TIME_NOW" -v msg="$COMMIT_MSG_SAFE" -v files="$COMMIT_FILES_SAFE" -v lines="$LINES_CHANGED_SAFE" '
-    /#### Next Tasks/ {
+    if (!found_activity) {
       print "#### Last Activity";
       print icon " **" time "** - " msg lines;
       print "- Modified files:";
@@ -182,8 +164,48 @@ if ! grep -q "#### Last Activity" "$TMP_FILE"; then
       print files;
       print "```";
       print "";
-      print $0;
+      found_activity = 1;
+      skip_until_next_tasks = 1;
       next;
+    }
+  }
+  
+  /#### Next Tasks/ {
+    if (!found_next_tasks) {
+      print "#### Next Tasks";
+      found_next_tasks = 1;
+      skip_until_next_tasks = 0;
+      next;
+    } else {
+      next; # Skip duplicate Next Tasks headers
+    }
+  }
+  
+  {
+    if (!skip_until_next_tasks) print;
+  }
+' "$SESSION_FILE" > "$TMP_FILE"
+
+# If Last Activity section wasn't found, add it before Next Tasks
+if ! grep -q "#### Last Activity" "$TMP_FILE"; then
+  awk -v icon="$ICON" -v time="$TIME_NOW" -v msg="$COMMIT_MSG_SAFE" -v files="$COMMIT_FILES_SAFE" -v lines="$LINES_CHANGED_SAFE" '
+    BEGIN { found_next_tasks = 0 }
+    
+    /#### Next Tasks/ {
+      if (!found_next_tasks) {
+        print "#### Last Activity";
+        print icon " **" time "** - " msg lines;
+        print "- Modified files:";
+        print "```";
+        print files;
+        print "```";
+        print "";
+        print "#### Next Tasks";
+        found_next_tasks = 1;
+        next;
+      } else {
+        next; # Skip duplicate Next Tasks headers
+      }
     }
     { print }
   ' "$SESSION_FILE" > "$TMP_FILE"
