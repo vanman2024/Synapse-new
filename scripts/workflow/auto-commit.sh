@@ -8,15 +8,27 @@ INTERVAL=${1:-5}
 REPO_DIR="$(pwd)"
 TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
+# Set the lock file path
+LOCK_FILE="$REPO_DIR/.claude-autocommit.lock"
+LOG_DIR="$REPO_DIR/logs/system"
+LOG_FILE="$LOG_DIR/auto-commit.log"
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
 echo "Auto-commit script started at $TIMESTAMP"
 echo "Working in: $REPO_DIR"
 echo "Commit interval: $INTERVAL minutes"
+echo "Log file: $LOG_FILE"
 
 # Make sure we're in a git repository
 if [ ! -d "$REPO_DIR/.git" ]; then
   echo "Error: Not a git repository"
   exit 1
 fi
+
+# Save our PID to the lock file
+echo $$ > "$LOCK_FILE"
 
 # Function to update the SESSION.md file with commit information
 update_session_file() {
@@ -43,18 +55,30 @@ get_tracked_files() {
   # If .autocommitignore exists, filter files using grep -v
   IGNORE_FILE="$REPO_DIR/.autocommitignore"
   if [ -f "$IGNORE_FILE" ]; then
-    # Create a grep pattern from .autocommitignore, excluding comments and blank lines
-    IGNORE_PATTERN=$(grep -v "^#" "$IGNORE_FILE" | grep -v "^$" | sed 's/\*/\\*/g' | sed 's/\./\\./g' | sed 's/^/^/' | sed 's/$//')
-    if [ -n "$IGNORE_PATTERN" ]; then
+    # Create a temporary filtered ignore file without comments and blank lines
+    TEMP_IGNORE_FILE="/tmp/temp_ignore_patterns.txt"
+    grep -v "^#" "$IGNORE_FILE" | grep -v "^$" > "$TEMP_IGNORE_FILE"
+    
+    if [ -s "$TEMP_IGNORE_FILE" ]; then
       # Filter out ignored files
       TRACKED_FILES=""
       for FILE in $ALL_CHANGES; do
-        if ! echo "$FILE" | grep -q -f "$IGNORE_FILE"; then
+        IGNORE_THIS=false
+        while IFS= read -r PATTERN; do
+          if [[ "$FILE" == $PATTERN ]]; then
+            IGNORE_THIS=true
+            break
+          fi
+        done < "$TEMP_IGNORE_FILE"
+        
+        if [ "$IGNORE_THIS" = false ]; then
           TRACKED_FILES="$TRACKED_FILES $FILE"
         fi
       done
+      rm -f "$TEMP_IGNORE_FILE"
       echo "$TRACKED_FILES"
     else
+      rm -f "$TEMP_IGNORE_FILE"
       echo "$ALL_CHANGES"
     fi
   else
@@ -112,8 +136,17 @@ commit_and_push() {
   
   # Run the session tracker to update SESSION.md with details
   if [ -f "$REPO_DIR/scripts/workflow/auto-session-tracker.sh" ]; then
-    $REPO_DIR/scripts/workflow/auto-session-tracker.sh
+    bash "$REPO_DIR/scripts/workflow/auto-session-tracker.sh"
     echo "Updated SESSION.md with latest activity"
+  else
+    echo "Error: Could not find auto-session-tracker.sh script"
+  fi
+  
+  # Log activity to the current session
+  if [ -f "$REPO_DIR/scripts/workflow/session-manager.sh" ]; then
+    # Get list of changed files for logging
+    CHANGED_FILES=$(git status --porcelain | grep -v "^D " | awk '{print $2}' | tr '\n' ' ')
+    bash "$REPO_DIR/scripts/workflow/session-manager.sh" log "commit" "Auto-commit" "$CHANGED_FILES"
   fi
   
   # Check if there are changes to commit

@@ -1,0 +1,99 @@
+name: Synapse CI/CD
+
+on:
+  push:
+    branches: [ main, clean-rebuild, feature/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Fetch all history for SESSION.md updates
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: TypeScript Check
+      run: npm run typecheck
+    
+    - name: Lint
+      run: npm run lint
+    
+    - name: Build
+      run: npm run build
+      
+    - name: Test
+      run: npm test
+    
+    # Update SESSION.md with CI information
+    - name: Update SESSION.md
+      run: |
+        TIMESTAMP=$(date +"%H:%M")
+        GITHUB_REF_NAME=$(echo "${{ github.ref_name }}")
+        echo "Updating SESSION.md with CI information..."
+        sed -i "/#### Last Activity/a 🚀 **$TIMESTAMP** - GitHub CI passed for branch $GITHUB_REF_NAME (Commit: ${{ github.sha }})" SESSION.md
+        
+    - name: Commit SESSION.md updates
+      if: success() && github.event_name == 'push'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add SESSION.md
+        git commit -m "Update SESSION.md from GitHub Actions [skip ci]" || echo "No changes to commit"
+        git push
+      
+  # Deploy job for main and clean-rebuild branches
+  deploy-dev:
+    if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/clean-rebuild')
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build for production
+      run: npm run build
+      
+    # Example deployment step (modify based on your actual deployment process)
+    - name: Deploy to development environment
+      run: |
+        echo "Deploying to development environment..."
+        # Add your deployment commands here
+        # Examples:
+        # - AWS: aws s3 sync ./dist s3://your-bucket
+        # - Azure: az webapp deployment source config-zip --resource-group myResourceGroup --name myApp --src ./dist
+        # - Custom server: scp -r ./dist user@server:/path/to/deployment
+        
+    # Update SESSION.md with deployment information
+    - name: Update SESSION.md with deployment info
+      run: |
+        TIMESTAMP=$(date +"%H:%M")
+        echo "Updating SESSION.md with deployment information..."
+        sed -i "/#### Last Activity/a 🚀 **$TIMESTAMP** - Deployed to development environment from branch ${{ github.ref_name }}" SESSION.md
+        
+    - name: Commit deployment update
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add SESSION.md
+        git commit -m "Update SESSION.md with deployment info [skip ci]" || echo "No changes to commit"
+        git push

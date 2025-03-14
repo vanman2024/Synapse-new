@@ -1,6 +1,15 @@
 # Claude AI Development Workflow
 
-This document explains how to use Claude AI effectively with this project, including our automated tracking and commit system.
+This document explains how to use Claude AI effectively with this project, including our automated tracking, session management, and commit system.
+
+## Overview
+
+The Synapse development workflow includes:
+
+1. **Session Management**: Each development session is assigned a unique ID for tracking
+2. **Auto-commit**: Changes are committed automatically at regular intervals
+3. **Session Tracking**: All activities are recorded in SESSION.md and session storage
+4. **Continuity**: New sessions can access previous session data for context
 
 ## Getting Started with Claude
 
@@ -16,10 +25,58 @@ This document explains how to use Claude AI effectively with this project, inclu
    - Displays current project status and focus
    - Sets up git hooks if needed
 
-2. **Session Tracking**
-   - `SESSION.md` contains all current project status and focus
-   - This file is automatically updated with each commit
-   - No need to manually track progress between sessions
+2. **Session Tracking with Compaction and Archiving**
+   
+   The Synapse project provides several options for managing session history, with full automation of the process:
+   
+   **a) Automatic Compact Detection (Recommended):**
+   - Start Claude with automatic compact detection:
+     ```bash
+     ./scripts/claude/claude-with-autocompact.sh
+     ```
+   - Use Claude as normal during your session
+   - When ready, run the `/compact` command in Claude
+   - The system automatically:
+     - Detects the compact summary output
+     - Saves it to both Claude sessions and workflow archives
+     - Updates session indexes
+     - No manual copying or pasting needed
+   
+   **b) Manual Session End:**
+   - If you prefer to manually end a session:
+     ```bash
+     ./scripts/workflow/session-end.sh
+     ```
+   - This script will:
+     - Stop the auto-commit process
+     - Perform a final commit
+     - Prompt you to paste the compact summary output
+     - Save the summary to all archive locations
+   
+   **c) Full Session Archiving System:**
+   - `SESSION.md` contains recent sessions (current + previous 2 sessions)
+   - New sessions are added to the top of the file
+   - Older sessions are automatically archived to `docs/workflow/session-archives/`
+   - Archives are named `session-YYYYMMDD.md` and organized by date
+   - Access archives with:
+     ```bash
+     # List all available archives
+     ./scripts/workflow/session-archive.sh --list
+     
+     # Retrieve a specific archive by date
+     ./scripts/workflow/session-archive.sh --retrieve=YYYYMMDD
+     
+     # Customize how many sessions to keep in SESSION.md
+     ./scripts/workflow/session-archive.sh --keep=5
+     ```
+   - Archives are automatically tracked by git when created
+   - The `claude-start.sh` script shows recent archives for continuity
+   
+   **d) Claude Session Archives:**
+   - Claude sessions are also archived separately in `/sessions/claude/`
+   - This includes compact summaries and full session text
+   - Organized by date and indexed for easy reference
+   - These archives complement the workflow archives
 
 3. **Context Review Process**
    At the beginning of each session, Claude will automatically perform a comprehensive context review:

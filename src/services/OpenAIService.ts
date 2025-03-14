@@ -67,7 +67,7 @@ export class OpenAIService {
       const response = await this.openai.createImage({
         prompt: sanitizedPrompt,
         n: 1,
-        size: size,
+        size: size as any, // Cast to any to bypass type checking for size
         response_format: 'url'
       });
       
@@ -249,7 +249,7 @@ export class OpenAIService {
         
         // Fallback to extracting hex codes with regex
         const hexCodes = generatedText.match(/#[0-9A-Fa-f]{6}/g) || [];
-        return [...new Set(hexCodes)]; // Remove duplicates
+        return Array.from(new Set(hexCodes)); // Remove duplicates
       }
     } catch (error) {
       console.error('Error extracting color palette:', error);

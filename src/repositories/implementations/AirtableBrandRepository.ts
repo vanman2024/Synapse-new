@@ -32,12 +32,23 @@ export class AirtableBrandRepository implements BrandRepository {
     return {
       id: record.id,
       name: record.Name,
-      website: record.Website,
+      description: record.Description,
+      websiteUrl: record.Website, // Primary field
+      website: record.Website, // Legacy field (same as websiteUrl)
+      logoUrl: record.LogoUrl,
       colors: {
         primary: record.PrimaryColor,
         secondary: record.SecondaryColors ? record.SecondaryColors.split(',').map((c: string) => c.trim()) : [],
-        accent: record.AccentColors ? record.AccentColors.split(',').map((c: string) => c.trim()) : []
+        accent: record.AccentColors ? record.AccentColors.split(',').map((c: string) => c.trim()) : [],
+        text: record.TextColor,
+        background: record.BackgroundColor
       },
+      fonts: record.Fonts ? {
+        primary: record.Fonts.primary,
+        secondary: record.Fonts.secondary,
+        headings: record.Fonts.headings,
+        body: record.Fonts.body
+      } : undefined,
       typography: {
         headingFont: record.HeadingFont,
         bodyFont: record.BodyFont,
@@ -56,6 +67,11 @@ export class AirtableBrandRepository implements BrandRepository {
         textStyle: record.TextStyle,
         layoutPreferences: record.LayoutPreferences || []
       },
+      socialMedia: record.SocialMedia,
+      industry: record.Industry,
+      targetAudience: record.TargetAudience,
+      toneOfVoice: record.ToneOfVoice,
+      keyMessages: record.KeyMessages,
       createdAt: new Date(record.CreatedAt || record._createdTime),
       updatedAt: new Date(record.UpdatedAt || record._updatedTime)
     };
@@ -70,34 +86,89 @@ export class AirtableBrandRepository implements BrandRepository {
     const record: Partial<FieldSet> = {};
 
     if (brand.name) record.Name = brand.name;
-    if (brand.website) record.Website = brand.website;
+    if (brand.description) record.Description = brand.description;
+    
+    // Handle both website and websiteUrl (preferring websiteUrl if both exist)
+    if (brand.websiteUrl) {
+      record.Website = brand.websiteUrl;
+    } else if (brand.website) {
+      record.Website = brand.website;
+    }
+    
+    if (brand.logoUrl) record.LogoUrl = brand.logoUrl;
 
     if (brand.colors) {
       if (brand.colors.primary) record.PrimaryColor = brand.colors.primary;
-      if (brand.colors.secondary) record.SecondaryColors = brand.colors.secondary.join(', ');
-      if (brand.colors.accent) record.AccentColors = brand.colors.accent.join(', ');
+      
+      if (brand.colors.secondary) {
+        if (Array.isArray(brand.colors.secondary)) {
+          record.SecondaryColors = brand.colors.secondary.join(', ');
+        } else {
+          record.SecondaryColors = brand.colors.secondary;
+        }
+      }
+      
+      if (brand.colors.accent) {
+        if (Array.isArray(brand.colors.accent)) {
+          record.AccentColors = brand.colors.accent.join(', ');
+        } else {
+          record.AccentColors = brand.colors.accent;
+        }
+      }
+      
+      if (brand.colors.text) record.TextColor = brand.colors.text;
+      if (brand.colors.background) record.BackgroundColor = brand.colors.background;
+    }
+
+    if (brand.fonts) {
+      record.Fonts = {
+        primary: brand.fonts.primary,
+        secondary: brand.fonts.secondary,
+        headings: brand.fonts.headings,
+        body: brand.fonts.body
+      } as any; // Cast to any to avoid FieldSet type issues
     }
 
     if (brand.typography) {
       if (brand.typography.headingFont) record.HeadingFont = brand.typography.headingFont;
       if (brand.typography.bodyFont) record.BodyFont = brand.typography.bodyFont;
-      if (brand.typography.fontSize) record.FontSizes = {
-        heading: brand.typography.fontSize.heading,
-        subheading: brand.typography.fontSize.subheading,
-        body: brand.typography.fontSize.body
-      };
+      if (brand.typography.fontSize) {
+        record.FontSizes = {
+          heading: brand.typography.fontSize.heading,
+          subheading: brand.typography.fontSize.subheading,
+          body: brand.typography.fontSize.body
+        } as any; // Cast to any to avoid FieldSet type issues
+      }
     }
 
     if (brand.logos) {
       if (brand.logos.main) record.MainLogo = brand.logos.main;
-      if (brand.logos.alternate) record.AlternateLogos = brand.logos.alternate;
+      if (brand.logos.alternate) {
+        if (Array.isArray(brand.logos.alternate)) {
+          record.AlternateLogos = brand.logos.alternate;
+        } else {
+          record.AlternateLogos = [brand.logos.alternate];
+        }
+      }
     }
 
     if (brand.style) {
       if (brand.style.imageStyle) record.ImageStyle = brand.style.imageStyle;
       if (brand.style.textStyle) record.TextStyle = brand.style.textStyle;
-      if (brand.style.layoutPreferences) record.LayoutPreferences = brand.style.layoutPreferences;
+      if (brand.style.layoutPreferences) {
+        if (Array.isArray(brand.style.layoutPreferences)) {
+          record.LayoutPreferences = brand.style.layoutPreferences;
+        } else {
+          record.LayoutPreferences = [brand.style.layoutPreferences];
+        }
+      }
     }
+    
+    if (brand.socialMedia) record.SocialMedia = brand.socialMedia as any;
+    if (brand.industry) record.Industry = brand.industry;
+    if (brand.targetAudience) record.TargetAudience = brand.targetAudience;
+    if (brand.toneOfVoice) record.ToneOfVoice = brand.toneOfVoice;
+    if (brand.keyMessages) record.KeyMessages = brand.keyMessages;
 
     record.UpdatedAt = new Date().toISOString();
 
@@ -270,17 +341,18 @@ export class AirtableBrandRepository implements BrandRepository {
       // Example: Extract colors from CSS (simplified)
       const colorRegex = /#[0-9A-Fa-f]{6}/g;
       const colorsFound = html.match(colorRegex) || [];
-      const uniqueColors = [...new Set(colorsFound)];
+      const uniqueColors = Array.from(new Set(colorsFound)) as string[];
 
       // Example: Extract fonts from CSS (simplified)
       const fontRegex = /font-family:\s*(['"])?([-\w\s,]+)\1/g;
       const fontsMatches = html.matchAll(fontRegex);
       const fonts = Array.from(fontsMatches, m => m[2].split(',')[0].trim());
-      const uniqueFonts = [...new Set(fonts)];
+      const uniqueFonts = Array.from(new Set(fonts)) as string[];
 
       // Update brand with extracted information
       const updateData: Partial<Brand> = {
-        website: websiteUrl,
+        websiteUrl: websiteUrl,
+        website: websiteUrl, // For backward compatibility
         style: {
           imageStyle: 'professional' // Default style
         }
