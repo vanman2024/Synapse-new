@@ -26,11 +26,23 @@ The Synapse development workflow includes:
    - Sets up git hooks if needed
 
 2. **Session Tracking and Archiving**
-   - `SESSION.md` contains recent sessions (current + previous 2-3 sessions)
+   - `SESSION.md` contains recent sessions (current + previous 2 sessions)
    - New sessions are added to the top of the file
    - Older sessions are automatically archived to `docs/workflow/session-archives/`
-   - Archives are organized by date for easy retrieval
-   - Access archives with `./scripts/workflow/session-archive.sh --list` and `--retrieve=YYYYMMDD`
+   - Archives are named `session-YYYYMMDD.md` and organized by date
+   - Access archives with:
+     ```bash
+     # List all available archives
+     ./scripts/workflow/session-archive.sh --list
+     
+     # Retrieve a specific archive by date
+     ./scripts/workflow/session-archive.sh --retrieve=YYYYMMDD
+     
+     # Customize how many sessions to keep in SESSION.md
+     ./scripts/workflow/session-archive.sh --keep=5
+     ```
+   - Archives are automatically tracked by git when created
+   - The `claude-start.sh` script shows recent archives for continuity
 
 3. **Context Review Process**
    At the beginning of each session, Claude will automatically perform a comprehensive context review:

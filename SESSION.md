@@ -1,6 +1,11 @@
 # Synapse Development Session Log
 
-## Current Session: March 13, 2025 (18:55:07)
+> **Note**: This file automatically archives older sessions to keep it manageable.
+> Only the 3 most recent sessions are kept here. Older sessions are moved to 
+> `docs/workflow/session-archives/`. Use `./scripts/workflow/session-archive.sh --list`
+> to see all archived sessions and `--retrieve=YYYYMMDD` to view a specific one.
+
+## Current Session: March 13, 2025 (19:00:14)
 
 ### Session Goals
 - Create a unified tracking system for development progress between sessions
@@ -41,11 +46,16 @@
 - Added verification system to separate local commits from GitHub pushes
 
 #### Last Activity
-📝 **18:50** - Auto-commit (docs): 2025-03-13 18:44:54 (+98, -2)
+✨ **19:00** - Auto-commit (feature): 2025-03-13 18:55:10 (+136, -8)
 - Modified files:
 ```
 SESSION.md
-docs/workflow/session-archives/session-20250312.md
+docs/workflow/session-archives/README.md
+docs/workflow/session-archives/session-20250314.md
+docs/workflow/session-archives/session-20250315.md
+scripts/workflow/auto-session-tracker.sh
+scripts/workflow/claude-start.sh
+scripts/workflow/test-archive.sh
 ```
 
 #### Next Tasks
