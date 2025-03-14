@@ -59,6 +59,7 @@ export class AirtableClient {
     params?: QueryParams<FieldSet>
   ): Promise<Records<FieldSet>> {
     try {
+      // Use as to maintain the readonly nature of Records
       return await this.getTable(tableName).select(params || {}).all();
     } catch (error) {
       console.error(`Error selecting records from ${tableName}:`, error);
@@ -111,8 +112,9 @@ export class AirtableClient {
   public async createMultiple(
     tableName: string, 
     records: Array<Partial<FieldSet>>
-  ): Promise<Array<Airtable.Record<FieldSet>>> {
+  ): Promise<Records<FieldSet>> {
     try {
+      // Return Records type instead of Array
       return await this.getTable(tableName).create(records);
     } catch (error) {
       console.error(`Error creating multiple records in ${tableName}:`, error);
