@@ -32,7 +32,8 @@ echo "Loading context and starting Claude..."
 echo ""
 
 # Run the context loader to create the context file
-CONTEXT_FILE=$($CLAUDE_DIR/claude-context-loader.sh | grep -o "/tmp/claude-context-[0-9]\+-[0-9]\+.txt")
+$CLAUDE_DIR/claude-context-loader.sh > /tmp/claude-context-output.log
+CONTEXT_FILE=$(grep -o "/tmp/claude-context-[0-9]\+-[0-9]\+.txt" /tmp/claude-context-output.log | tail -1)
 
 # Check if context file was created
 if [ -f "$CONTEXT_FILE" ]; then

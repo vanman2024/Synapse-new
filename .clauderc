@@ -1,0 +1,39 @@
+# .clauderc - Configuration file for Claude to auto-run workflows
+# This file helps Claude automatically run the right scripts
+
+# Source the original claude commands
+source "/mnt/c/Users/user/SynapseProject/Synapse-new/scripts/claude-commands.sh"
+
+# Automation settings
+AUTO_START_SESSION=true     # Auto-start session management
+AUTO_BRANCH_CHECK=true      # Auto-check branch when development starts
+AUTO_VERIFY_CODE=true       # Auto-verify code before commits
+AUTO_COMMIT_DETECTION=true  # Auto-detect when code needs to be committed
+AUTO_SAVE_COMPACT=true      # Auto-save compact summaries at key points
+AUTO_PR_SUGGESTION=true     # Auto-suggest PR creation when a feature is complete
+
+# Paths to key scripts
+SYNERGY_SCRIPT="./synergy.sh"
+BRANCH_CHECKER="./auto-branch-checker.sh"
+
+# User preferences
+PREFERRED_BRANCH_PREFIX="feature/"
+COMPACT_SAVE_FREQUENCY="milestone"  # Options: always, milestone, completion
+
+# Automatically run branch checker when development starts
+auto_check_development() {
+    if [ "$AUTO_BRANCH_CHECK" = true ]; then
+        if [ -f "$BRANCH_CHECKER" ]; then
+            echo "Automatically checking branch setup..."
+            "$BRANCH_CHECKER"
+        fi
+    fi
+}
+
+# Add function to automatically handle development workflow
+start_development() {
+    auto_check_development
+}
+
+# Export the function
+export -f start_development
