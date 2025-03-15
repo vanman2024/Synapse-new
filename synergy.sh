@@ -250,9 +250,10 @@ archive_session() {
   # Create archive directory if it doesn't exist
   mkdir -p "$SESSIONS_DIR"
   
-  # Create a unique archive name with timestamp to avoid overwriting
-  ARCHIVE_DATE=$(date '+%Y%m%d-%H%M%S')
+  # Create daily archive file name
+  ARCHIVE_DATE=$(date '+%Y%m%d')
   ARCHIVE_FILE="$SESSIONS_DIR/session-$ARCHIVE_DATE.md"
+  CURRENT_TIME=$(date '+%H:%M:%S')
   
   # Check if the session is active
   if grep -q "Status: Active" "$SESSION_FILE"; then
@@ -260,8 +261,16 @@ archive_session() {
     echo -e "\n### Note: This session was not properly closed before archiving\n" >> "$SESSION_FILE"
   fi
   
-  # Copy the session file to the archive
-  cp "$SESSION_FILE" "$ARCHIVE_FILE"
+  # If daily file exists, append with separator
+  if [ -f "$ARCHIVE_FILE" ]; then
+    echo -e "\n\n---\n\n## Session at $CURRENT_TIME\n" >> "$ARCHIVE_FILE"
+    cat "$SESSION_FILE" >> "$ARCHIVE_FILE"
+  else
+    # Create new daily file with header
+    echo "# Synapse Development Sessions - $(date '+%B %d, %Y')" > "$ARCHIVE_FILE"
+    echo -e "\n## Session at $CURRENT_TIME\n" >> "$ARCHIVE_FILE"
+    cat "$SESSION_FILE" >> "$ARCHIVE_FILE"
+  fi
   
   echo -e "${YELLOW}Session archived to $ARCHIVE_FILE${NC}"
   return 0
