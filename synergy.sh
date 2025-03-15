@@ -258,20 +258,30 @@ update_module_progress() {
   return 0
 }
 
-# Update module tracker with completed status
+# Update module tracker with status change
 update_module() {
   MODULE="$1"
   STATUS="$2"
   
   if [ -z "$MODULE" ] || [ -z "$STATUS" ]; then
-    echo -e "${YELLOW}Usage: synergy.sh update-module \"Module Name\" complete${NC}"
+    echo -e "${YELLOW}Usage: synergy.sh update-module \"Module Name\" [complete|in-progress|planned]${NC}"
     return 1
   fi
   
+  # Escape module name for pattern matching
+  MODULE_PATTERN=$(echo "$MODULE" | sed 's/[\/&.]/\\&/g')
+  
   if [ "$STATUS" = "complete" ]; then
-    # Update MODULE_TRACKER in markdown table format
-    sed -i "s/| $MODULE | 🔄 In Progress /| $MODULE | ✅ Completed /" "$MODULE_TRACKER"
-    sed -i "s/| $MODULE | 📝 Planned /| $MODULE | ✅ Completed /" "$MODULE_TRACKER"
+    # Update MODULE_TRACKER.md
+    sed -i "s/| $MODULE_PATTERN | 🔄 In Progress /| $MODULE_PATTERN | ✅ Completed /" "$MODULE_TRACKER"
+    sed -i "s/| $MODULE_PATTERN | 📝 Planned /| $MODULE_PATTERN | ✅ Completed /" "$MODULE_TRACKER"
+    
+    # Update DEVELOPMENT_ROADMAP.md
+    ROADMAP_FILE="$REPO_DIR/docs/project/DEVELOPMENT_ROADMAP.md"
+    if [ -f "$ROADMAP_FILE" ]; then
+      # Find any instances of the module in the roadmap and mark as completed
+      sed -i "s/- \\[ \\].*$MODULE_PATTERN/- [x] $MODULE_PATTERN/" "$ROADMAP_FILE"
+    fi
     
     # Log the change
     echo -e "${GREEN}✅ Updated module status: $MODULE is now marked as completed${NC}"
@@ -286,23 +296,28 @@ update_module() {
       sed -i "${DATE_LINE}i\\- Completed $MODULE implementation" "$PROJECT_TRACKER"
     fi
     
-    # Update DEVELOPMENT_ROADMAP
-    ROADMAP_FILE="$REPO_DIR/docs/project/DEVELOPMENT_ROADMAP.md"
-    if [ -f "$ROADMAP_FILE" ]; then
-      # Check if the module exists in the roadmap and mark it as completed
-      # Use escaped pattern to handle special characters in module names
-      MODULE_PATTERN=$(echo "$MODULE" | sed 's/[\/&]/\\&/g')
-      if grep -q "- \[ \].*$MODULE_PATTERN" "$ROADMAP_FILE"; then
-        sed -i "s/- \[ \].*$MODULE_PATTERN/- [x] $MODULE_PATTERN/" "$ROADMAP_FILE"
-        echo -e "${GREEN}✅ Updated development roadmap for $MODULE${NC}"
-      fi
-    fi
+  elif [ "$STATUS" = "in-progress" ]; then
+    # Update MODULE_TRACKER.md
+    sed -i "s/| $MODULE_PATTERN | 📝 Planned /| $MODULE_PATTERN | 🔄 In Progress /" "$MODULE_TRACKER"
     
-    return 0
+    # Add to session log
+    echo "#### $(date '+%H:%M') - Started work on module: $MODULE" >> "$SESSION_FILE"
+    
+    # Log the change
+    echo -e "${GREEN}✅ Updated module status: $MODULE is now marked as in progress${NC}"
+    
+  elif [ "$STATUS" = "planned" ]; then
+    # Update MODULE_TRACKER.md
+    sed -i "s/| $MODULE_PATTERN | 🔄 In Progress /| $MODULE_PATTERN | 📝 Planned /" "$MODULE_TRACKER"
+    
+    # Log the change
+    echo -e "${GREEN}✅ Updated module status: $MODULE is now marked as planned${NC}"
   else
-    echo -e "${YELLOW}Unknown status: $STATUS (use 'complete')${NC}"
+    echo -e "${YELLOW}Unknown status: $STATUS (use 'complete', 'in-progress', or 'planned')${NC}"
     return 1
   fi
+  
+  return 0
 }
 
 # ------------------------------------------------------------
@@ -829,64 +844,6 @@ show_status() {
 # Help Function
 # ------------------------------------------------------------
 
-update_doc() {
-  MODULE="$1"
-  STATUS="$2"
-  
-  if [ -z "$MODULE" ] || [ -z "$STATUS" ]; then
-    echo -e "${YELLOW}Usage: synergy.sh update-doc \"Module Name\" [complete|in-progress|planned]${NC}"
-    return 1
-  fi
-  
-  # Convert status to standardized format
-  if [ "$STATUS" = "complete" ]; then
-    STATUS_CODE="completed"
-  elif [ "$STATUS" = "in-progress" ]; then
-    STATUS_CODE="in-progress"
-  elif [ "$STATUS" = "planned" ]; then
-    STATUS_CODE="planned"
-  else
-    echo -e "${YELLOW}Unknown status: $STATUS (use complete, in-progress, or planned)${NC}"
-    return 1
-  fi
-  
-  MODULE_DATA="$REPO_DIR/docs/project/MODULE_DATA.json"
-  
-  # Check if MODULE_DATA.json exists
-  if [ ! -f "$MODULE_DATA" ]; then
-    echo -e "${YELLOW}MODULE_DATA.json not found. Run scripts/workflow/streamline-docs.sh first.${NC}"
-    return 1
-  fi
-  
-  # Create a temporary file for the updated JSON
-  TEMP_FILE=$(mktemp)
-  
-  # Update the module status in the JSON
-  jq --arg module "$MODULE" --arg status "$STATUS_CODE" '(.modules[] | select(.module == $module) | .status) = $status' "$MODULE_DATA" > "$TEMP_FILE"
-  
-  # Update the last updated timestamp
-  jq --arg timestamp "$(date +"%Y-%m-%d %H:%M:%S")" '.lastUpdated = $timestamp' "$TEMP_FILE" > "$TEMP_FILE.2"
-  
-  # Replace the original file
-  mv "$TEMP_FILE.2" "$MODULE_DATA"
-  rm "$TEMP_FILE"
-  
-  # Run the streamline-docs.sh script to regenerate all documentation
-  if [ -f "$REPO_DIR/scripts/workflow/streamline-docs.sh" ]; then
-    echo -e "${YELLOW}Regenerating documentation from updated module data...${NC}"
-    "$REPO_DIR/scripts/workflow/streamline-docs.sh"
-  else
-    echo -e "${YELLOW}Warning: streamline-docs.sh not found. Documentation not regenerated.${NC}"
-  fi
-  
-  # Log the change
-  echo -e "${GREEN}✅ Updated module status: $MODULE is now $STATUS${NC}"
-  
-  # Add to session log
-  echo "#### $(date '+%H:%M') - Updated module: $MODULE to $STATUS" >> "$SESSION_FILE"
-  
-  return 0
-}
 
 show_help() {
   echo -e "${BLUE}Synapse - Automated Project Management${NC}"
@@ -901,15 +858,14 @@ show_help() {
   echo "  status        - Show current project and session status"
   echo ""
   echo -e "${GREEN}Module Tracking:${NC}"
-  echo "  update-module \"Module Name\" complete - Mark a module as completed (legacy)"
-  echo "  update-doc \"Module Name\" complete    - Update module status in single source of truth"
-  echo "  update-doc \"Module Name\" in-progress - Mark a module as in progress"
-  echo "  update-doc \"Module Name\" planned     - Mark a module as planned"
+  echo "  update-module \"Module Name\" complete    - Mark a module as completed"
+  echo "  update-module \"Module Name\" in-progress - Mark a module as in progress"
+  echo "  update-module \"Module Name\" planned     - Reset a module to planned status"
   echo ""
   echo -e "${GREEN}Documentation Management:${NC}"
-  echo "  streamline-docs - Run the documentation streamlining script"
-  echo "  * All documentation is generated from a single source of truth (MODULE_DATA.json)"
-  echo "  * Use update-doc to change module status in one place and regenerate all docs"
+  echo "  * Documentation is automatically updated when using update-module"
+  echo "  * Both MODULE_TRACKER.md and DEVELOPMENT_ROADMAP.md are kept in sync"
+  echo "  * Modules are properly marked as completed with [x] in the roadmap"
   echo ""
   echo -e "${GREEN}Git Integration:${NC}"
   echo "  feature NAME  - Create a new feature branch"
@@ -988,17 +944,7 @@ case "$COMMAND" in
     stop_auto_commit
     ;;
     
-  # Documentation management
-  update-doc)
-    update_doc "$1" "$2"
-    ;;
-  streamline-docs)
-    if [ -f "$REPO_DIR/scripts/workflow/streamline-docs.sh" ]; then
-      "$REPO_DIR/scripts/workflow/streamline-docs.sh"
-    else
-      echo -e "${YELLOW}Documentation streamlining script not found.${NC}"
-    fi
-    ;;
+  # No additional documentation management - it's integrated into update-module
     
   # Help and default
   help|*)
