@@ -1,112 +1,82 @@
 /**
  * Setup script for Airtable development tracking
- * This script creates the necessary tables and fields in Airtable
+ * This script populates Airtable tables with data from CSV files
  */
 const airtableClient = require('./airtable-client');
 const fs = require('fs');
 const path = require('path');
+const { parse } = require('csv-parse/sync');
 
-// Load development overview for initial data
-const overviewPath = path.join(__dirname, '../../docs/project/DEVELOPMENT_OVERVIEW.md');
-const overviewContent = fs.readFileSync(overviewPath, 'utf8');
+// CSV file paths
+const phasesCSV = path.join(__dirname, 'csv/phases.csv');
+const modulesCSV = path.join(__dirname, 'csv/modules.csv');
+const sessionsCSV = path.join(__dirname, 'csv/sessions.csv');
 
-// Parse phases and modules from the overview document
-function parseOverview(content) {
-  const phases = [];
-  const modules = [];
-  
-  // Extract phases
-  const phaseRegex = /## Phase (\d+): ([^(]+) \(([^)]+)\)/g;
-  let phaseMatch;
-  while ((phaseMatch = phaseRegex.exec(content)) !== null) {
-    const phaseNumber = phaseMatch[1];
-    const phaseName = phaseMatch[2].trim();
-    const status = phaseMatch[3] === 'Current' ? 'Current' : 
-                  phaseMatch[3] === 'Complete' ? 'Completed' : 'Planned';
+// Parse CSV and create records
+async function importCSV(filePath, tableName, fieldMap = {}) {
+  try {
+    console.log(`Importing ${tableName} from ${path.basename(filePath)}...`);
     
-    phases.push({
-      name: phaseName,
-      number: parseInt(phaseNumber, 10),
-      status
+    // Read and parse CSV
+    const content = fs.readFileSync(filePath, 'utf8');
+    const records = parse(content, {
+      columns: true,
+      skip_empty_lines: true
     });
-  }
-  
-  // Extract modules and their phases
-  let currentPhase = null;
-  const lines = content.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
     
-    // Check if this is a phase line
-    const phaseMatch = line.match(/## Phase (\d+): ([^(]+)/);
-    if (phaseMatch) {
-      currentPhase = {
-        number: parseInt(phaseMatch[1], 10),
-        name: phaseMatch[2].trim()
-      };
-      continue;
+    console.log(`Found ${records.length} records to import.`);
+    
+    // Import records
+    let successCount = 0;
+    for (const record of records) {
+      try {
+        // Map fields if needed
+        const mappedRecord = {};
+        for (const [key, value] of Object.entries(record)) {
+          const mappedKey = fieldMap[key] || key;
+          mappedRecord[mappedKey] = value;
+        }
+        
+        await airtableClient.createRecord(tableName, mappedRecord);
+        successCount++;
+      } catch (error) {
+        console.error(`Error importing record:`, error.message);
+      }
     }
     
-    // Check if this is a module line
-    const moduleMatch = line.match(/- \[([\sx])\] (.+)/);
-    if (moduleMatch && currentPhase) {
-      const isComplete = moduleMatch[1] === 'x';
-      const moduleName = moduleMatch[2].trim();
-      
-      modules.push({
-        name: moduleName,
-        phase: currentPhase.name,
-        phaseNumber: currentPhase.number,
-        status: isComplete ? 'Completed' : 
-               currentPhase.name.includes('Current') ? 'In Progress' : 'Planned'
-      });
-    }
+    console.log(`Successfully imported ${successCount} of ${records.length} records.`);
+    return successCount;
+  } catch (error) {
+    console.error(`Error importing ${tableName}:`, error);
+    return 0;
   }
-  
-  return { phases, modules };
 }
 
 // Setup tables in Airtable
 async function setupTables() {
   try {
-    console.log('Setting up Airtable tables for development tracking...');
+    console.log('Populating Airtable tables from CSV files...');
     
-    // Parse overview
-    const { phases, modules } = parseOverview(overviewContent);
-    
-    // Create Phases table
-    console.log('Setting up Phases table...');
-    for (const phase of phases) {
-      try {
-        await airtableClient.createRecord('Phases', {
-          'Name': phase.name,
-          'Number': phase.number,
-          'Status': phase.status
-        });
-        console.log(`Created phase: ${phase.name}`);
-      } catch (error) {
-        console.error(`Error creating phase ${phase.name}:`, error.message);
-      }
+    // Import phases
+    if (fs.existsSync(phasesCSV)) {
+      await importCSV(phasesCSV, 'Phases');
+    } else {
+      console.error(`Phases CSV file not found: ${phasesCSV}`);
     }
     
-    // Create Modules table
-    console.log('Setting up Modules table...');
-    for (const module of modules) {
-      try {
-        await airtableClient.createRecord('Modules', {
-          'Name': module.name,
-          'Phase': module.phase,
-          'Phase Number': module.phaseNumber,
-          'Status': module.status
-        });
-        console.log(`Created module: ${module.name}`);
-      } catch (error) {
-        console.error(`Error creating module ${module.name}:`, error.message);
-      }
+    // Import modules
+    if (fs.existsSync(modulesCSV)) {
+      await importCSV(modulesCSV, 'Modules');
+    } else {
+      console.error(`Modules CSV file not found: ${modulesCSV}`);
     }
     
-    // Create Sessions table (empty for now)
-    console.log('Setting up Sessions table...');
+    // Import sessions
+    if (fs.existsSync(sessionsCSV)) {
+      await importCSV(sessionsCSV, 'Sessions');
+    } else {
+      console.error(`Sessions CSV file not found: ${sessionsCSV}`);
+    }
     
     console.log('Airtable setup complete!');
   } catch (error) {

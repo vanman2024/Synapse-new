@@ -2,7 +2,8 @@
  * Airtable client for development tracking
  * This is separate from the application's Airtable client
  */
-require('dotenv').config({ path: '../../.env' });
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const Airtable = require('airtable');
 
 // Configuration for development tracking
@@ -11,9 +12,9 @@ const config = {
     PAT: process.env.DEV_AIRTABLE_PAT,
     BASE_ID: process.env.DEV_AIRTABLE_BASE_ID,
     TABLES: {
-      MODULES: process.env.DEV_AIRTABLE_MODULES_TABLE || 'Modules',
-      PHASES: process.env.DEV_AIRTABLE_PHASES_TABLE || 'Phases',
-      SESSIONS: process.env.DEV_AIRTABLE_SESSIONS_TABLE || 'Sessions'
+      MODULES: 'Modules',
+      PHASES: 'Phases',
+      SESSIONS: 'Sessions'
     }
   }
 };

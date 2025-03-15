@@ -2,27 +2,22 @@
 
 This directory contains tools for tracking development progress in Airtable, completely separate from the main application.
 
-## Setup
+## Setup Instructions
 
-1. Create a new Airtable base with the following tables:
-   - **Modules**: For tracking individual development modules
-   - **Phases**: For tracking development phases
-   - **Sessions**: For tracking development sessions
+1. **Set up Airtable Tables**:
+   - Review the schema in `AIRTABLE_SCHEMA.md`
+   - Create the 3 tables: Phases, Modules, and Sessions 
+   - Add the fields as specified in the schema
 
-2. Update the `.env` file with your Airtable credentials:
+2. **Import Data**:
+   - Option 1: Use the Airtable UI to import the CSV files in the `csv` directory
+   - Option 2: Run the import script: `node setup-airtable.js`
+
+3. **Configure Environment Variables**:
+   - Ensure your `.env` file has the correct Airtable credentials:
    ```
-   # Development Tracking (separate from application)
    DEV_AIRTABLE_PAT=your_personal_access_token
    DEV_AIRTABLE_BASE_ID=your_base_id
-   DEV_AIRTABLE_MODULES_TABLE=Modules
-   DEV_AIRTABLE_PHASES_TABLE=Phases
-   DEV_AIRTABLE_SESSIONS_TABLE=Sessions
-   ```
-
-3. Run the setup script to initialize the tables with data from the Development Overview document:
-   ```bash
-   cd tools/dev-tracker
-   node setup-airtable.js
    ```
 
 ## Integration with synergy.sh
@@ -68,26 +63,23 @@ The integration script provides the following commands:
 - `synergy-airtable.sh get-phase-modules <phase-number>` - Get modules for a phase
 - `synergy-airtable.sh setup` - Set up Airtable tables
 
-## Airtable Base Structure
+## CSV Files
 
-### Modules Table
-- Name (Single line text) - Name of the module
-- Phase (Single line text) - Name of the phase
-- Phase Number (Number) - Phase number
-- Status (Single select) - Completed, In Progress, Planned
-- Last Updated (Date) - Date last updated
+The `csv` directory contains data ready to import:
 
-### Phases Table
-- Name (Single line text) - Name of the phase
-- Number (Number) - Phase number
-- Status (Single select) - Current, Completed, Planned
+- `phases.csv` - All development phases
+- `modules.csv` - All modules from the Development Overview
+- `sessions.csv` - Example development sessions
 
-### Sessions Table
-- Date (Date) - Date of the session
-- Branch (Single line text) - Git branch
-- Focus (Single line text) - Module focus
-- Status (Single select) - Completed, Active
-- Start Time (Single line text) - Time started
-- End Time (Single line text) - Time ended
-- Summary (Long text) - Session summary
-- Commits (Long text) - JSON string of commits
+## API Integration
+
+The `airtable-integration.js` file provides functions for:
+- Updating module status
+- Logging development sessions
+- Querying phase and module information
+
+## Troubleshooting
+
+- If you get "Unknown field" errors, check that your table field names match exactly with the schema in AIRTABLE_SCHEMA.md
+- For API rate limiting issues, your operations may be throttled, retry after a few seconds
+- If you need to recreate the integration, delete all records in the tables and re-import using the CSVs

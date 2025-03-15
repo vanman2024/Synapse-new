@@ -25,14 +25,17 @@ async function updateModuleStatus(moduleName, status) {
     
     // Map synergy status to Airtable status
     let airtableStatus;
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'complete':
+      case 'completed':
         airtableStatus = 'Completed';
         break;
       case 'in-progress':
+      case 'in progress':
         airtableStatus = 'In Progress';
         break;
       case 'planned':
+      case 'to do':
         airtableStatus = 'Planned';
         break;
       default:
