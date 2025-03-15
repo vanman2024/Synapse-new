@@ -1041,6 +1041,7 @@ show_help() {
   echo "  start         - Start a new development session with auto-tracking"
   echo "  end           - End and archive the current session"
   echo "  status        - Show current project and session status"
+  echo "  cleanup       - Consolidate today's session files into a single daily file"
   echo ""
   echo -e "${GREEN}Module Tracking:${NC}"
   echo "  update-module \"Module Name\" complete    - Mark a module as completed"
@@ -1076,6 +1077,41 @@ show_help() {
   echo ""
 }
 
+# Clean up old session files
+cleanup_sessions() {
+  echo -e "${BLUE}Cleaning up old session files...${NC}"
+  
+  # Get today's date for the consolidated file
+  TODAY=$(date '+%Y%m%d')
+  CONSOLIDATED_FILE="$SESSIONS_DIR/session-$TODAY.md"
+  BACKUP_DIR="$SESSIONS_DIR/old-sessions"
+  
+  # Create backup directory if it doesn't exist
+  mkdir -p "$BACKUP_DIR"
+  
+  # Find all timestamped session files for today
+  SESSION_COUNT=0
+  for file in "$SESSIONS_DIR"/session-$TODAY-*.md; do
+    if [ -f "$file" ]; then
+      # Extract the time from the filename
+      FILE_TIME=$(basename "$file" | sed -E 's/session-[0-9]+-([0-9]+)\.md/\1/')
+      
+      # Add a separator and the session to the consolidated file
+      echo -e "\n\n---\n\n## Session at $FILE_TIME\n" >> "$CONSOLIDATED_FILE"
+      cat "$file" >> "$CONSOLIDATED_FILE"
+      
+      # Move the file to backup
+      mv "$file" "$BACKUP_DIR/"
+      SESSION_COUNT=$((SESSION_COUNT+1))
+    fi
+  done
+  
+  echo -e "${GREEN}Consolidated $SESSION_COUNT sessions into $CONSOLIDATED_FILE${NC}"
+  echo -e "${YELLOW}Old files moved to $BACKUP_DIR${NC}"
+  
+  return 0
+}
+
 # ------------------------------------------------------------
 # Main Command Handler
 # ------------------------------------------------------------
@@ -1093,6 +1129,9 @@ case "$COMMAND" in
     ;;
   status)
     show_status
+    ;;
+  cleanup)
+    cleanup_sessions
     ;;
     
   # Module tracking
