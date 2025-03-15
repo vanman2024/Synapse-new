@@ -32,6 +32,63 @@ NC='\033[0m'
 # Core Functions - Project Tracking
 # ------------------------------------------------------------
 
+# Update roadmap to reflect current focus
+update_roadmap() {
+  FOCUS_MODULE="$1"
+  ROADMAP_FILE="$REPO_DIR/docs/project/DEVELOPMENT_ROADMAP.md"
+  
+  if [ -z "$FOCUS_MODULE" ] || [ ! -f "$ROADMAP_FILE" ]; then
+    return 1
+  fi
+  
+  # Update the current phase marker in the roadmap
+  sed -i 's/(Current)/(Previous)/g' "$ROADMAP_FILE"
+  
+  # Find the phase containing our focus module
+  PHASE_LINE=$(grep -n "## Phase" "$ROADMAP_FILE" | grep -B1 "$FOCUS_MODULE" | head -1 | cut -d':' -f1)
+  if [ -n "$PHASE_LINE" ]; then
+    sed -i "${PHASE_LINE}s/(Previous)/(Current)/g" "$ROADMAP_FILE"
+    sed -i "${PHASE_LINE}s/^## Phase/## Phase/g" "$ROADMAP_FILE"
+  fi
+  
+  # Update the immediate next steps based on module focus
+  NEXT_STEPS_LINE=$(grep -n "## Immediate Next Steps" "$ROADMAP_FILE" | cut -d':' -f1)
+  if [ -n "$NEXT_STEPS_LINE" ]; then
+    # Clear existing next steps (remove 5 lines after the header)
+    sed -i "$((NEXT_STEPS_LINE+1)),+5d" "$ROADMAP_FILE"
+    
+    # Add new next steps based on the focus module
+    if [[ "$FOCUS_MODULE" == *"Content"* ]]; then
+      cat >> "$ROADMAP_FILE" << EOF
+1. Implement $FOCUS_MODULE with AI integration
+2. Create templates for content generation
+3. Complete unit tests for $FOCUS_MODULE
+4. Update API endpoints for content management
+5. Start work on Brand Style System integration
+EOF
+    elif [[ "$FOCUS_MODULE" == *"Brand"* ]]; then
+      cat >> "$ROADMAP_FILE" << EOF
+1. Implement $FOCUS_MODULE for styling management
+2. Create theme extraction capabilities
+3. Integrate with Cloudinary for asset storage
+4. Complete unit tests for $FOCUS_MODULE
+5. Update API endpoints for brand management
+EOF
+    else
+      cat >> "$ROADMAP_FILE" << EOF
+1. Implement $FOCUS_MODULE functionality
+2. Create supporting components
+3. Complete unit tests for $FOCUS_MODULE
+4. Update related documentation
+5. Integrate with existing modules
+EOF
+    fi
+  fi
+  
+  echo -e "${GREEN}Updated development roadmap to focus on $FOCUS_MODULE${NC}"
+  return 0
+}
+
 # Start a development session with automatic tracking
 start_session() {
   # Check if a session is already active
@@ -91,6 +148,9 @@ Current focus is on $FOCUS_MODULE implementation.
 EOF
 
   echo -e "${GREEN}Session started. Focus: $FOCUS_MODULE${NC}"
+  
+  # Update development roadmap based on current focus
+  update_roadmap "$FOCUS_MODULE"
   
   # Start auto-commit in background if not already running
   if ! is_auto_commit_running; then
@@ -206,7 +266,7 @@ update_module() {
   fi
   
   if [ "$STATUS" = "complete" ]; then
-    # Update in markdown table format
+    # Update MODULE_TRACKER in markdown table format
     sed -i "s/| $MODULE | 🔄 In Progress /| $MODULE | ✅ Completed /" "$MODULE_TRACKER"
     sed -i "s/| $MODULE | 📝 Planned /| $MODULE | ✅ Completed /" "$MODULE_TRACKER"
     
@@ -221,6 +281,16 @@ update_module() {
     if [ -n "$DATE_LINE" ]; then
       DATE_LINE=$((DATE_LINE + 1))
       sed -i "${DATE_LINE}i\\- Completed $MODULE implementation" "$PROJECT_TRACKER"
+    fi
+    
+    # Update DEVELOPMENT_ROADMAP
+    ROADMAP_FILE="$REPO_DIR/docs/project/DEVELOPMENT_ROADMAP.md"
+    if [ -f "$ROADMAP_FILE" ]; then
+      # Check if the module exists in the roadmap and mark it as completed
+      if grep -q "- \[ \] .*$MODULE" "$ROADMAP_FILE"; then
+        sed -i "s/- \[ \] .*$MODULE/- [x] $MODULE/" "$ROADMAP_FILE"
+        echo -e "${GREEN}✅ Updated development roadmap for $MODULE${NC}"
+      fi
     fi
     
     return 0
@@ -769,6 +839,12 @@ show_help() {
   echo -e "${GREEN}Module Tracking:${NC}"
   echo "  update-module \"Module Name\" complete - Mark a module as completed"
   echo ""
+  echo -e "${GREEN}Documentation Management:${NC}"
+  echo "  * Documentation updates automatically with session management"
+  echo "  * The roadmap is updated when you start a session with a new focus"
+  echo "  * Module Tracker updates when you mark modules as complete"
+  echo "  * Each completed module also updates the Development Roadmap checkboxes"
+  echo ""
   echo -e "${GREEN}Git Integration:${NC}"
   echo "  feature NAME  - Create a new feature branch"
   echo "  commit \"Message\" - Create a smart commit (auto-generates message if none provided)"
@@ -785,6 +861,7 @@ show_help() {
   echo "  auto-off      - Stop auto-commit background process"
   echo ""
   echo "Most operations automatically update SESSION.md and integrate with git."
+  echo "Documentation is kept in sync with development progress automatically."
   echo ""
 }
 
