@@ -1,9 +1,6 @@
 # .clauderc - Configuration file for Claude to auto-run workflows
 # This file helps Claude automatically run the right scripts
 
-# Source the original claude commands
-source "/mnt/c/Users/user/SynapseProject/Synapse-new/scripts/claude-commands.sh"
-
 # Automation settings
 AUTO_START_SESSION=true     # Auto-start session management
 AUTO_BRANCH_CHECK=true      # Auto-check branch when development starts

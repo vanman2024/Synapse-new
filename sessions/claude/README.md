@@ -23,28 +23,41 @@ The Synapse project maintains TWO DISTINCT tracking systems:
 ## 📂 Directory Structure
 
 - **`compact-YYYYMMDD.md`** - Daily summary files (conversations only)
-- **`compact-watch/`** - Drop Claude summaries here for auto-processing
-- **`processed/`** - Already processed summary files
-  
+- **`debug/`** - Debugging logs for troubleshooting
+
 ## 🚀 Using the Compact Summary System
 
-### Option 1: Auto-Watch (Recommended)
+The original automatic compact summary system has been deprecated.
 
-```bash
-# Start the auto-watch system
-./start-compact-watch.sh
+### Manual Approach
+
+For now, please use the following manual approach:
+
+1. Copy important information from your conversation with Claude
+2. Manually create a file in this directory with the format `compact-YYYYMMDD.md`
+3. Add your summary with proper formatting
+4. Consider including it in your git commits
+
+Example file structure:
+```markdown
+# Claude Compact Summary - March 15, 2025
+
+## Session at 10:15:30
+
+This is a summary of what we discussed:
+- Item 1: Description
+- Item 2: Description
+
+---
+
+## Session at 14:22:05
+
+Another summary section:
+- Point A
+- Point B
 ```
 
-When you use `/compact` in Claude:
-1. Save the output to `sessions/claude/compact-watch/any-name.txt`
-2. It's automatically processed and saved
-
-### Option 2: Manual Save
-
-```bash
-# Manually save a compact summary
-./scripts/workflow/claude/save-compact-simple.sh
-```
+A new automated solution may be implemented in the future.
 
 ## 👁️ Viewing Conversation Summaries
 
