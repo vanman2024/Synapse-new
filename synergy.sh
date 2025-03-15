@@ -39,10 +39,17 @@ start_session() {
     echo -e "${YELLOW}A session is already active. End it first or resume.${NC}"
     read -p "Do you want to resume the current session? (y/n): " choice
     if [ "$choice" != "y" ]; then
-      return 1
+      # Archive the existing session before overwriting
+      archive_session
+      echo -e "${YELLOW}Previous session archived before starting new session.${NC}"
+    else
+      echo -e "${GREEN}Resuming current session.${NC}"
+      return 0
     fi
-    echo -e "${GREEN}Resuming current session.${NC}"
-    return 0
+  elif [ -f "$SESSION_FILE" ]; then
+    # Archive any existing session file even if not active
+    archive_session
+    echo -e "${YELLOW}Previous session archived before starting new session.${NC}"
   fi
 
   # Create a new session
@@ -97,6 +104,32 @@ EOF
   return 0
 }
 
+# Archive the current session file
+archive_session() {
+  if [ ! -f "$SESSION_FILE" ]; then
+    return 0
+  fi
+  
+  # Create archive directory if it doesn't exist
+  mkdir -p "$SESSIONS_DIR"
+  
+  # Create a unique archive name with timestamp to avoid overwriting
+  ARCHIVE_DATE=$(date '+%Y%m%d-%H%M%S')
+  ARCHIVE_FILE="$SESSIONS_DIR/session-$ARCHIVE_DATE.md"
+  
+  # Check if the session is active
+  if grep -q "Status: Active" "$SESSION_FILE"; then
+    # Add a note that this session wasn't properly closed
+    echo -e "\n### Note: This session was not properly closed before archiving\n" >> "$SESSION_FILE"
+  fi
+  
+  # Copy the session file to the archive
+  cp "$SESSION_FILE" "$ARCHIVE_FILE"
+  
+  echo -e "${YELLOW}Session archived to $ARCHIVE_FILE${NC}"
+  return 0
+}
+
 # End current session with summary and archiving
 end_session() {
   # Check if a session is active
@@ -129,14 +162,13 @@ $(update_module_progress)
 
 EOF
 
-  # Archive the session
-  mkdir -p "$SESSIONS_DIR"
-  cp "$SESSION_FILE" "$SESSIONS_DIR/session-$(date '+%Y%m%d').md"
+  # Archive the session with proper closing
+  archive_session
   
   # Stop auto-commit if running
   stop_auto_commit
   
-  echo -e "${GREEN}Session ended and archived to $SESSIONS_DIR/session-$(date '+%Y%m%d').md${NC}"
+  echo -e "${GREEN}Session ended and properly archived${NC}"
   
   return 0
 }
