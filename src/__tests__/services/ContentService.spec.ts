@@ -36,8 +36,7 @@ describe('ContentService', () => {
     mockOpenAIService = new OpenAIService() as jest.Mocked<OpenAIService>;
     mockCloudinaryService = new CloudinaryService() as jest.Mocked<CloudinaryService>;
 
-    // Override constructor to use our mocks
-    jest.spyOn(AirtableContentRepository.prototype, 'constructor').mockImplementation(() => {});
+    // Set up mock implementations
     (AirtableContentRepository as jest.Mock).mockImplementation(() => mockContentRepository);
     (OpenAIService as jest.Mock).mockImplementation(() => mockOpenAIService);
     (CloudinaryService as jest.Mock).mockImplementation(() => mockCloudinaryService);
