@@ -314,6 +314,9 @@ EOF
   # Stop auto-commit if running
   stop_auto_commit
   
+  # Log session in Airtable if integration is available
+  use_airtable log-session "$SESSION_FILE"
+  
   echo -e "${GREEN}Session ended and properly archived${NC}"
   
   return 0
@@ -405,6 +408,9 @@ update_module() {
   
   # Update roadmap focus
   update_roadmap "$MODULE" "$STATUS"
+  
+  # Update Airtable if integration is available
+  use_airtable update-module "$MODULE" "$STATUS"
   
   return 0
 }
@@ -1068,9 +1074,11 @@ show_help() {
   echo "  auto-on       - Start auto-commit in background"
   echo "  auto-off      - Stop auto-commit background process"
   echo ""
-  echo -e "${GREEN}GitHub Projects:${NC}"
+  echo -e "${GREEN}Project Tracking:${NC}"
   echo "  github-config - Configure GitHub Projects integration"
   echo "                  (Retrieves IDs needed for project configuration)"
+  echo "  airtable-setup - Set up Airtable for development tracking"
+  echo "                  (Creates tables and populates with data from DEVELOPMENT_OVERVIEW.md)"
   echo ""
   echo "Most operations automatically update SESSION.md and integrate with git."
   echo "Documentation is kept in sync with development progress automatically."
@@ -1110,6 +1118,22 @@ cleanup_sessions() {
   echo -e "${YELLOW}Old files moved to $BACKUP_DIR${NC}"
   
   return 0
+}
+
+# ------------------------------------------------------------
+# Airtable Integration
+# ------------------------------------------------------------
+
+# Airtable integration function
+use_airtable() {
+  AIRTABLE_SCRIPT="$REPO_DIR/tools/dev-tracker/synergy-airtable.sh"
+  
+  if [ ! -f "$AIRTABLE_SCRIPT" ]; then
+    echo -e "${YELLOW}Airtable integration script not found. Skipping Airtable integration.${NC}"
+    return 1
+  fi
+  
+  "$AIRTABLE_SCRIPT" "$@"
 }
 
 # ------------------------------------------------------------
@@ -1177,6 +1201,11 @@ case "$COMMAND" in
   # GitHub Projects configuration
   github-config)
     get_github_projects_config
+    ;;
+    
+  # Airtable setup
+  airtable-setup)
+    use_airtable setup
     ;;
     
   # Help and default
