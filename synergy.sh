@@ -44,8 +44,11 @@ update_roadmap() {
   # Update the current phase marker in the roadmap
   sed -i 's/(Current)/(Previous)/g' "$ROADMAP_FILE"
   
+  # Escape special characters in the module name
+  FOCUS_PATTERN=$(echo "$FOCUS_MODULE" | sed 's/[\/&]/\\&/g')
+  
   # Find the phase containing our focus module
-  PHASE_LINE=$(grep -n "## Phase" "$ROADMAP_FILE" | grep -B1 "$FOCUS_MODULE" | head -1 | cut -d':' -f1)
+  PHASE_LINE=$(grep -n "## Phase" "$ROADMAP_FILE" | grep -B1 "$FOCUS_PATTERN" | head -1 | cut -d':' -f1)
   if [ -n "$PHASE_LINE" ]; then
     sed -i "${PHASE_LINE}s/(Previous)/(Current)/g" "$ROADMAP_FILE"
     sed -i "${PHASE_LINE}s/^## Phase/## Phase/g" "$ROADMAP_FILE"
@@ -287,8 +290,10 @@ update_module() {
     ROADMAP_FILE="$REPO_DIR/docs/project/DEVELOPMENT_ROADMAP.md"
     if [ -f "$ROADMAP_FILE" ]; then
       # Check if the module exists in the roadmap and mark it as completed
-      if grep -q "- \[ \] .*$MODULE" "$ROADMAP_FILE"; then
-        sed -i "s/- \[ \] .*$MODULE/- [x] $MODULE/" "$ROADMAP_FILE"
+      # Use escaped pattern to handle special characters in module names
+      MODULE_PATTERN=$(echo "$MODULE" | sed 's/[\/&]/\\&/g')
+      if grep -q "- \[ \].*$MODULE_PATTERN" "$ROADMAP_FILE"; then
+        sed -i "s/- \[ \].*$MODULE_PATTERN/- [x] $MODULE_PATTERN/" "$ROADMAP_FILE"
         echo -e "${GREEN}✅ Updated development roadmap for $MODULE${NC}"
       fi
     fi

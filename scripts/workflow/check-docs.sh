@@ -32,10 +32,13 @@ COMPLETED_MODULES=$(grep -F "✅ Completed" "$MODULE_TRACKER" | sed -E 's/.*\| (
 # Check each completed module in the roadmap
 INCONSISTENCIES=0
 for module in $COMPLETED_MODULES; do
-  module_pattern=$(echo $module | sed 's/ /\\s/g')
-  if grep -q "\[ \].*$module_pattern" "$ROADMAP_FILE"; then
-    echo -e "${RED}Inconsistency: $module is completed in MODULE_TRACKER but not in ROADMAP${NC}"
-    echo "Inconsistency: $module is completed in MODULE_TRACKER but not in ROADMAP" >> "$LOG_FILE"
+  # Clean and escape the module name for pattern matching
+  module_pattern=$(echo $module | sed 's/ /\\s*/g' | sed 's/[\/&]/\\&/g')
+  
+  # Check if the module exists in the roadmap but is not marked with [x]
+  if grep -q "\- \[ \].*$module_pattern" "$ROADMAP_FILE"; then
+    echo -e "${RED}Inconsistency: $module is completed in MODULE_TRACKER but not marked with [x] in ROADMAP${NC}"
+    echo "Inconsistency: $module is completed in MODULE_TRACKER but not marked with [x] in ROADMAP" >> "$LOG_FILE"
     INCONSISTENCIES=$((INCONSISTENCIES+1))
   fi
 done
