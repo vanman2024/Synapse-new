@@ -21,24 +21,20 @@ case "$COMMAND" in
   update-module)
     MODULE="$1"
     STATUS="$2"
+    PHASE="$3"
     
     if [ -z "$MODULE" ] || [ -z "$STATUS" ]; then
-      echo -e "${YELLOW}Usage: synergy-airtable.sh update-module \"Module Name\" [complete|in-progress|planned]${NC}"
+      echo -e "${YELLOW}Usage: synergy-airtable.sh update-module \"Module Name\" [complete|in-progress|planned] [\"Phase Name\"]${NC}"
       exit 1
     fi
     
-    # Call Node.js script to update module
-    $NODE_BIN -e "
-      const airtable = require('$SCRIPT_DIR/airtable-integration');
-      airtable.updateModuleStatus('$MODULE', '$STATUS')
-        .then(result => {
-          process.exit(result ? 0 : 1);
-        })
-        .catch(error => {
-          console.error(error);
-          process.exit(1);
-        });
-    "
+    # Call dedicated script to update module
+    PHASE_ARG=""
+    if [ -n "$PHASE" ]; then
+      PHASE_ARG="\"$PHASE\""
+    fi
+    
+    $NODE_BIN "$SCRIPT_DIR/update-module-status.js" "$MODULE" "$STATUS" $PHASE_ARG
     
     if [ $? -eq 0 ]; then
       echo -e "${GREEN}Module status updated in Airtable.${NC}"

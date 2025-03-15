@@ -8,14 +8,15 @@ const airtableClient = require('./airtable-client');
  * Update module status in Airtable
  * @param {string} moduleName - Name of the module
  * @param {string} status - Status (complete, in-progress, planned)
+ * @param {string} phaseName - Optional phase name to link
  * @returns {Promise<Object>} - Updated record
  */
-async function updateModuleStatus(moduleName, status) {
+async function updateModuleStatus(moduleName, status, phaseName = null) {
   try {
     console.log(`Updating module "${moduleName}" to status "${status}" in Airtable...`);
     
     // Find the module record
-    const formula = `{Name} = "${moduleName}"`;
+    const formula = `{Module Name} = "${moduleName}"`;
     const records = await airtableClient.findRecords('Modules', formula);
     
     if (records.length === 0) {
@@ -42,12 +43,37 @@ async function updateModuleStatus(moduleName, status) {
         airtableStatus = status;
     }
     
+    // Prepare fields to update
+    const updateFields = {
+      'Status': airtableStatus
+    };
+    
+    // If phase name provided, look up phase record and link it
+    if (phaseName) {
+      try {
+        // Extract the main phase name from format like "Phase 2: Content Generation Enhancement (Current)"
+        const simplePhaseName = phaseName.includes(':') ? 
+          phaseName.split(':')[1].trim() : phaseName;
+        
+        // Look up by partial name match (using FIND function in formula)
+        const phaseRecords = await airtableClient.findRecords('Phases', 
+          `FIND("${simplePhaseName}", {Description}) > 0`);
+        
+        if (phaseRecords.length > 0) {
+          // Set linked record field - must be an array of IDs
+          updateFields['Phase'] = [phaseRecords[0].id];
+          console.log(`Linked module to phase: ${simplePhaseName}`);
+        } else {
+          console.log(`Phase "${simplePhaseName}" not found for linking`);
+        }
+      } catch (error) {
+        console.log(`Could not link to phase: ${error.message}`);
+      }
+    }
+    
     // Update the record
     const recordId = records[0].id;
-    const updatedRecord = await airtableClient.updateRecord('Modules', recordId, {
-      'Status': airtableStatus,
-      'Last Updated': new Date().toISOString()
-    });
+    const updatedRecord = await airtableClient.updateRecord('Modules', recordId, updateFields);
     
     console.log(`Module "${moduleName}" updated to "${airtableStatus}" in Airtable.`);
     return updatedRecord;
@@ -68,15 +94,28 @@ async function logSession(session) {
     
     // Prepare session record
     const sessionRecord = {
-      'Date': session.date || new Date().toISOString(),
       'Branch': session.branch || '',
-      'Focus': session.focus || '',
       'Status': session.status || 'Completed',
-      'Start Time': session.startTime || '',
-      'End Time': session.endTime || '',
-      'Summary': session.summary || '',
-      'Commits': JSON.stringify(session.commits || [])
+      'Commits': session.commits || '',
+      'Notes': session.summary || ''
     };
+    
+    // If there's a related module, look up its ID and establish the link
+    if (session.module) {
+      try {
+        // Look up module ID by name
+        const moduleRecords = await airtableClient.findRecords('Modules', 
+          `{Module Name} = "${session.module}"`);
+          
+        if (moduleRecords.length > 0) {
+          // Set linked record field - must be an array of IDs
+          sessionRecord['Module'] = [moduleRecords[0].id];
+          console.log(`Linked session to module: ${session.module}`);
+        }
+      } catch (error) {
+        console.log(`Could not link to module: ${error.message}`);
+      }
+    }
     
     // Create the record
     const record = await airtableClient.createRecord('Sessions', sessionRecord);
