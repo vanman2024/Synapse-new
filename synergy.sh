@@ -829,8 +829,67 @@ show_status() {
 # Help Function
 # ------------------------------------------------------------
 
+update_doc() {
+  MODULE="$1"
+  STATUS="$2"
+  
+  if [ -z "$MODULE" ] || [ -z "$STATUS" ]; then
+    echo -e "${YELLOW}Usage: synergy.sh update-doc \"Module Name\" [complete|in-progress|planned]${NC}"
+    return 1
+  fi
+  
+  # Convert status to standardized format
+  if [ "$STATUS" = "complete" ]; then
+    STATUS_CODE="completed"
+  elif [ "$STATUS" = "in-progress" ]; then
+    STATUS_CODE="in-progress"
+  elif [ "$STATUS" = "planned" ]; then
+    STATUS_CODE="planned"
+  else
+    echo -e "${YELLOW}Unknown status: $STATUS (use complete, in-progress, or planned)${NC}"
+    return 1
+  fi
+  
+  MODULE_DATA="$REPO_DIR/docs/project/MODULE_DATA.json"
+  
+  # Check if MODULE_DATA.json exists
+  if [ ! -f "$MODULE_DATA" ]; then
+    echo -e "${YELLOW}MODULE_DATA.json not found. Run scripts/workflow/streamline-docs.sh first.${NC}"
+    return 1
+  fi
+  
+  # Create a temporary file for the updated JSON
+  TEMP_FILE=$(mktemp)
+  
+  # Update the module status in the JSON
+  jq --arg module "$MODULE" --arg status "$STATUS_CODE" '(.modules[] | select(.module == $module) | .status) = $status' "$MODULE_DATA" > "$TEMP_FILE"
+  
+  # Update the last updated timestamp
+  jq --arg timestamp "$(date +"%Y-%m-%d %H:%M:%S")" '.lastUpdated = $timestamp' "$TEMP_FILE" > "$TEMP_FILE.2"
+  
+  # Replace the original file
+  mv "$TEMP_FILE.2" "$MODULE_DATA"
+  rm "$TEMP_FILE"
+  
+  # Run the streamline-docs.sh script to regenerate all documentation
+  if [ -f "$REPO_DIR/scripts/workflow/streamline-docs.sh" ]; then
+    echo -e "${YELLOW}Regenerating documentation from updated module data...${NC}"
+    "$REPO_DIR/scripts/workflow/streamline-docs.sh"
+  else
+    echo -e "${YELLOW}Warning: streamline-docs.sh not found. Documentation not regenerated.${NC}"
+  fi
+  
+  # Log the change
+  echo -e "${GREEN}✅ Updated module status: $MODULE is now $STATUS${NC}"
+  
+  # Add to session log
+  echo "#### $(date '+%H:%M') - Updated module: $MODULE to $STATUS" >> "$SESSION_FILE"
+  
+  return 0
+}
+
 show_help() {
-  echo -e "${BLUE}Synergy - Automated Project Management${NC}"
+  echo -e "${BLUE}Synapse - Automated Project Management${NC}"
   echo "=========================================="
   echo ""
   echo "A consolidated workflow tool that maximizes automation"
@@ -842,13 +901,15 @@ show_help() {
   echo "  status        - Show current project and session status"
   echo ""
   echo -e "${GREEN}Module Tracking:${NC}"
-  echo "  update-module \"Module Name\" complete - Mark a module as completed"
+  echo "  update-module \"Module Name\" complete - Mark a module as completed (legacy)"
+  echo "  update-doc \"Module Name\" complete    - Update module status in single source of truth"
+  echo "  update-doc \"Module Name\" in-progress - Mark a module as in progress"
+  echo "  update-doc \"Module Name\" planned     - Mark a module as planned"
   echo ""
   echo -e "${GREEN}Documentation Management:${NC}"
-  echo "  * Documentation updates automatically with session management"
-  echo "  * The roadmap is updated when you start a session with a new focus"
-  echo "  * Module Tracker updates when you mark modules as complete"
-  echo "  * Each completed module also updates the Development Roadmap checkboxes"
+  echo "  streamline-docs - Run the documentation streamlining script"
+  echo "  * All documentation is generated from a single source of truth (MODULE_DATA.json)"
+  echo "  * Use update-doc to change module status in one place and regenerate all docs"
   echo ""
   echo -e "${GREEN}Git Integration:${NC}"
   echo "  feature NAME  - Create a new feature branch"
@@ -925,6 +986,18 @@ case "$COMMAND" in
     ;;
   auto-off)
     stop_auto_commit
+    ;;
+    
+  # Documentation management
+  update-doc)
+    update_doc "$1" "$2"
+    ;;
+  streamline-docs)
+    if [ -f "$REPO_DIR/scripts/workflow/streamline-docs.sh" ]; then
+      "$REPO_DIR/scripts/workflow/streamline-docs.sh"
+    else
+      echo -e "${YELLOW}Documentation streamlining script not found.${NC}"
+    fi
     ;;
     
   # Help and default
