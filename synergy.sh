@@ -11,8 +11,7 @@
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Define key files - single source of truth approach
-MODULE_TRACKER="$REPO_DIR/docs/project/MODULE_TRACKER.md"
-PROJECT_TRACKER="$REPO_DIR/docs/project/PROJECT_TRACKER.md"
+OVERVIEW_FILE="$REPO_DIR/docs/project/DEVELOPMENT_OVERVIEW.md"
 SESSION_FILE="$REPO_DIR/SESSION.md"
 COMPACT_DIR="$REPO_DIR/sessions/claude"
 SESSIONS_DIR="$REPO_DIR/sessions"
@@ -21,6 +20,14 @@ SESSIONS_DIR="$REPO_DIR/sessions"
 AUTO_COMMIT_INTERVAL=300 # seconds (5 minutes)
 AUTO_COMMIT_PID_FILE="/tmp/synergy-autocommit.pid"
 
+# GitHub Projects configuration
+# To configure this automatically, run: ./synergy.sh github-config
+# The github-config command will help you retrieve these values
+GITHUB_ORG="vanman2024"          # Organization or username
+GITHUB_REPO="Synapse-new"        # Repository name
+GITHUB_PROJECT_NUMBER="1"        # Project number from URL (e.g., 4 from /projects/4)
+GITHUB_STATUS_FIELD_ID="PVTF_lADOAHg8xMDTjMgzs0OU"  # Status field ID from GitHub API (placeholder)
+
 # Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -28,67 +35,113 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Ensure critical directories exist
+mkdir -p "$SESSIONS_DIR"
+mkdir -p "$COMPACT_DIR"
+mkdir -p "$COMPACT_DIR/processed"
+mkdir -p "$COMPACT_DIR/compact-watch"
+mkdir -p "$COMPACT_DIR/debug"
+mkdir -p "$COMPACT_DIR/archives"
+
 # ------------------------------------------------------------
 # Core Functions - Project Tracking
 # ------------------------------------------------------------
 
-# Update roadmap to reflect current focus
+# Update phase focus in overview and GitHub Projects
 update_roadmap() {
   FOCUS_MODULE="$1"
-  ROADMAP_FILE="$REPO_DIR/docs/project/DEVELOPMENT_ROADMAP.md"
+  STATUS="$2"
   
-  if [ -z "$FOCUS_MODULE" ] || [ ! -f "$ROADMAP_FILE" ]; then
+  # Reference is already defined at the top of the script
+  
+  if [ -z "$FOCUS_MODULE" ]; then
     return 1
   fi
   
-  # Update the current phase marker in the roadmap
-  sed -i 's/(Current)/(Previous)/g' "$ROADMAP_FILE"
-  
-  # Escape special characters in the module name
-  FOCUS_PATTERN=$(echo "$FOCUS_MODULE" | sed 's/[\/&]/\\&/g')
-  
-  # Find the phase containing our focus module
-  PHASE_LINE=$(grep -n "## Phase" "$ROADMAP_FILE" | grep -B1 "$FOCUS_PATTERN" | head -1 | cut -d':' -f1)
-  if [ -n "$PHASE_LINE" ]; then
-    sed -i "${PHASE_LINE}s/(Previous)/(Current)/g" "$ROADMAP_FILE"
-    sed -i "${PHASE_LINE}s/^## Phase/## Phase/g" "$ROADMAP_FILE"
+  # If overview file exists, update it for reference
+  if [ ! -f "$OVERVIEW_FILE" ]; then
+    echo -e "${YELLOW}Warning: Overview file not found. Creating reference phases only in GitHub Projects.${NC}"
   fi
   
-  # Update the immediate next steps based on module focus
-  NEXT_STEPS_LINE=$(grep -n "## Immediate Next Steps" "$ROADMAP_FILE" | cut -d':' -f1)
-  if [ -n "$NEXT_STEPS_LINE" ]; then
-    # Clear existing next steps (remove 5 lines after the header)
-    sed -i "$((NEXT_STEPS_LINE+1)),+5d" "$ROADMAP_FILE"
+  # Set up status - if none provided, assume we're just updating the focus
+  if [ -z "$STATUS" ]; then
+    # If we have an overview file, update it as reference
+    if [ -f "$OVERVIEW_FILE" ]; then
+      # Find the phase containing our focus module
+      FOCUS_PATTERN=$(echo "$FOCUS_MODULE" | sed 's/[\/&]/\\&/g')
+      PHASE_CONTENT=$(grep -A20 "## Phase" "$OVERVIEW_FILE" | grep -B20 "$FOCUS_PATTERN" | grep "## Phase")
+      
+      if [ -n "$PHASE_CONTENT" ]; then
+        # Found the phase, update it to current
+        sed -i 's/(Current)/(Previous)/g' "$OVERVIEW_FILE"
+        
+        # Extract the phase number and name
+        PHASE_NUM=$(echo "$PHASE_CONTENT" | sed -E 's/## Phase ([0-9]+):.*/\1/')
+        PHASE_NAME=$(echo "$PHASE_CONTENT" | sed -E 's/## Phase [0-9]+: (.*) \(.*/\1/')
+        
+        # Update the phase to current
+        sed -i "s/## Phase $PHASE_NUM: $PHASE_NAME (Previous)/## Phase $PHASE_NUM: $PHASE_NAME (Current)/g" "$OVERVIEW_FILE"
+      fi
+    fi
     
-    # Add new next steps based on the focus module
-    if [[ "$FOCUS_MODULE" == *"Content"* ]]; then
-      cat >> "$ROADMAP_FILE" << EOF
+    # TODO: Update the GitHub Projects phase/milestone
+    # This would be implemented when GitHub Projects is set up
+    
+  elif [ "$STATUS" = "complete" ]; then
+    # If we have an overview file, update it as reference
+    if [ -f "$OVERVIEW_FILE" ]; then
+      # Mark the module as completed in the overview using a pattern match approach
+      # Escape module name for pattern matching
+      MODULE_PATTERN=$(echo "$FOCUS_MODULE" | sed 's/[\/&]/\\&/g' | sed 's/ /[[:space:]]\+/g')
+      
+      # Find any instances of the module in the overview and mark as completed
+      if grep -qi "$MODULE_PATTERN" "$OVERVIEW_FILE"; then
+        sed -i "s/- \[ \]\(.*$MODULE_PATTERN\)/- [x]\1/gi" "$OVERVIEW_FILE"
+        echo -e "${GREEN}Updated local overview: Marked $FOCUS_MODULE as completed${NC}"
+      fi
+    fi
+    
+    # The actual project tracking is done in update_module via GitHub Projects
+  fi
+  
+  # If we have an overview file, update the immediate next steps
+  if [ -f "$OVERVIEW_FILE" ]; then
+    NEXT_STEPS_LINE=$(grep -n "## Immediate Next Steps" "$OVERVIEW_FILE" | cut -d':' -f1)
+    if [ -n "$NEXT_STEPS_LINE" ]; then
+      # Clear existing next steps (remove 5 lines after the header)
+      sed -i "$((NEXT_STEPS_LINE+1)),+5d" "$OVERVIEW_FILE"
+      
+      # Add new next steps based on the focus module
+      if [[ "$FOCUS_MODULE" == *"Content"* ]]; then
+        cat >> "$OVERVIEW_FILE" << EOF
 1. Implement $FOCUS_MODULE with AI integration
 2. Create templates for content generation
 3. Complete unit tests for $FOCUS_MODULE
 4. Update API endpoints for content management
 5. Start work on Brand Style System integration
 EOF
-    elif [[ "$FOCUS_MODULE" == *"Brand"* ]]; then
-      cat >> "$ROADMAP_FILE" << EOF
+      elif [[ "$FOCUS_MODULE" == *"Brand"* ]]; then
+        cat >> "$OVERVIEW_FILE" << EOF
 1. Implement $FOCUS_MODULE for styling management
 2. Create theme extraction capabilities
 3. Integrate with Cloudinary for asset storage
 4. Complete unit tests for $FOCUS_MODULE
 5. Update API endpoints for brand management
 EOF
-    else
-      cat >> "$ROADMAP_FILE" << EOF
+      else
+        cat >> "$OVERVIEW_FILE" << EOF
 1. Implement $FOCUS_MODULE functionality
 2. Create supporting components
 3. Complete unit tests for $FOCUS_MODULE
 4. Update related documentation
 5. Integrate with existing modules
 EOF
+      fi
     fi
   fi
   
-  echo -e "${GREEN}Updated development roadmap to focus on $FOCUS_MODULE${NC}"
+  echo -e "${GREEN}Updated focus to: $FOCUS_MODULE${NC}"
+  
   return 0
 }
 
@@ -116,8 +169,29 @@ start_session() {
   CURRENT_DATE=$(date "+%B %d, %Y")
   CURRENT_BRANCH=$(git branch --show-current)
   
-  # Read module focus from PROJECT_TRACKER
-  FOCUS_MODULE=$(grep "Focus Module" "$PROJECT_TRACKER" | cut -d':' -f2 | xargs)
+  # Get current module focus from the overview document
+  # Reference is already defined at the top of the script
+  
+  # Look for the phase marked (Current) then extract modules from that phase
+  CURRENT_PHASE_LINE=$(grep -n "(Current)" "$OVERVIEW_FILE" | cut -d':' -f1)
+  
+  if [ -n "$CURRENT_PHASE_LINE" ]; then
+    # Look for incomplete modules (with "[ ]" rather than "[x]") in the current phase
+    NEXT_PHASE_LINE=$(grep -n "## Phase" "$OVERVIEW_FILE" | awk -v start=$CURRENT_PHASE_LINE '$1 > start {print $1; exit}')
+    
+    if [ -z "$NEXT_PHASE_LINE" ]; then
+      # If no next phase, read to the end of file
+      FOCUS_MODULE=$(sed -n "$CURRENT_PHASE_LINE,\$p" "$OVERVIEW_FILE" | grep -m 1 "\[ \]" | sed -E 's/.*\[ \] (.*)/\1/')
+    else
+      # Otherwise read to the next phase
+      FOCUS_MODULE=$(sed -n "$CURRENT_PHASE_LINE,$((NEXT_PHASE_LINE-1))p" "$OVERVIEW_FILE" | grep -m 1 "\[ \]" | sed -E 's/.*\[ \] (.*)/\1/')
+    fi
+  fi
+  
+  # If no focus module found, use a generic name
+  if [ -z "$FOCUS_MODULE" ]; then
+    FOCUS_MODULE="Development Tasks"
+  fi
   
   # Start with template
   cat > "$SESSION_FILE" << EOF
@@ -143,7 +217,7 @@ Current focus is on $FOCUS_MODULE implementation.
 #### Next Tasks
 - Complete current implementation
 - Run tests and verify functionality
-- Update MODULE_TRACKER.md
+- Update Development Overview
 
 ### Code Context
 - Files: $(git status --short | wc -l) files with changes
@@ -152,7 +226,7 @@ EOF
 
   echo -e "${GREEN}Session started. Focus: $FOCUS_MODULE${NC}"
   
-  # Update development roadmap based on current focus
+  # Update development overview based on current focus
   update_roadmap "$FOCUS_MODULE"
   
   # Start auto-commit in background if not already running
@@ -258,7 +332,7 @@ update_module_progress() {
   return 0
 }
 
-# Update module tracker with status change
+# Update module status in GitHub Projects
 update_module() {
   MODULE="$1"
   STATUS="$2"
@@ -268,54 +342,60 @@ update_module() {
     return 1
   fi
   
-  # Escape module name for pattern matching
-  MODULE_PATTERN=$(echo "$MODULE" | sed 's/[\/&.]/\\&/g')
-  
-  if [ "$STATUS" = "complete" ]; then
-    # Update MODULE_TRACKER.md
-    sed -i "s/| $MODULE_PATTERN | 🔄 In Progress /| $MODULE_PATTERN | ✅ Completed /" "$MODULE_TRACKER"
-    sed -i "s/| $MODULE_PATTERN | 📝 Planned /| $MODULE_PATTERN | ✅ Completed /" "$MODULE_TRACKER"
-    
-    # Update DEVELOPMENT_ROADMAP.md
-    ROADMAP_FILE="$REPO_DIR/docs/project/DEVELOPMENT_ROADMAP.md"
-    if [ -f "$ROADMAP_FILE" ]; then
-      # Find any instances of the module in the roadmap and mark as completed
-      sed -i "s/- \\[ \\].*$MODULE_PATTERN/- [x] $MODULE_PATTERN/" "$ROADMAP_FILE"
-    fi
-    
-    # Log the change
-    echo -e "${GREEN}✅ Updated module status: $MODULE is now marked as completed${NC}"
-    
-    # Add to session log
-    echo "#### $(date '+%H:%M') - Completed module: $MODULE" >> "$SESSION_FILE"
-    
-    # Update PROJECT_TRACKER with achievement
-    DATE_LINE=$(grep -n "## Recent Achievements" "$PROJECT_TRACKER" | cut -d':' -f1)
-    if [ -n "$DATE_LINE" ]; then
-      DATE_LINE=$((DATE_LINE + 1))
-      sed -i "${DATE_LINE}i\\- Completed $MODULE implementation" "$PROJECT_TRACKER"
-    fi
-    
-  elif [ "$STATUS" = "in-progress" ]; then
-    # Update MODULE_TRACKER.md
-    sed -i "s/| $MODULE_PATTERN | 📝 Planned /| $MODULE_PATTERN | 🔄 In Progress /" "$MODULE_TRACKER"
+  # First, update the session file to reflect current focus
+  if [ "$STATUS" = "in-progress" ] && [ -f "$SESSION_FILE" ]; then
+    # Update focus in session file
+    sed -i "s/- Focus:.*/- Focus: $MODULE/" "$SESSION_FILE"
+    sed -i "s/Current focus is on.*/Current focus is on $MODULE implementation./" "$SESSION_FILE"
     
     # Add to session log
     echo "#### $(date '+%H:%M') - Started work on module: $MODULE" >> "$SESSION_FILE"
+  elif [ "$STATUS" = "complete" ] && [ -f "$SESSION_FILE" ]; then
+    # Add to session log
+    echo "#### $(date '+%H:%M') - Completed module: $MODULE" >> "$SESSION_FILE"
+  fi
+  
+  # Check if GitHub CLI is installed
+  if command -v gh &> /dev/null; then
+    echo -e "${BLUE}GitHub CLI is installed. Would use it for GitHub Projects integration if configured.${NC}"
     
-    # Log the change
-    echo -e "${GREEN}✅ Updated module status: $MODULE is now marked as in progress${NC}"
+    # For now, we'll just simulate the update with an explanatory message
+    if [ "$STATUS" = "complete" ]; then
+      echo -e "${GREEN}Simulating: Would move '$MODULE' to 'Done' column in GitHub Projects${NC}"
+    elif [ "$STATUS" = "in-progress" ]; then
+      echo -e "${GREEN}Simulating: Would move '$MODULE' to 'In Progress' column in GitHub Projects${NC}"
+    elif [ "$STATUS" = "planned" ]; then
+      echo -e "${GREEN}Simulating: Would move '$MODULE' to 'To Do' column in GitHub Projects${NC}"
+    fi
     
-  elif [ "$STATUS" = "planned" ]; then
-    # Update MODULE_TRACKER.md
-    sed -i "s/| $MODULE_PATTERN | 🔄 In Progress /| $MODULE_PATTERN | 📝 Planned /" "$MODULE_TRACKER"
-    
-    # Log the change
-    echo -e "${GREEN}✅ Updated module status: $MODULE is now marked as planned${NC}"
+    # Log the change for local tracking only
+    echo -e "${GREEN}✅ Local tracking updated: $MODULE is now marked as $STATUS${NC}"
+    echo -e "${YELLOW}GitHub Projects integration is disabled for now.${NC}"
   else
+    echo -e "${YELLOW}GitHub CLI not installed. Update only applied locally.${NC}"
+    echo "See: https://github.com/cli/cli#installation"
+    
+    # Fallback to updating the overview document
+    if [ -f "$OVERVIEW_FILE" ]; then
+      # Escape module name for pattern matching
+      MODULE_PATTERN=$(echo "$MODULE" | sed 's/[\/&.]/\\&/g')
+      
+      if [ "$STATUS" = "complete" ]; then
+        # Update the overview document as fallback
+        sed -i "s/\- \[ \]\s*$MODULE_PATTERN/\- [x] $MODULE_PATTERN/" "$OVERVIEW_FILE"
+        echo -e "${GREEN}✅ Updated local overview: $MODULE is now marked as completed${NC}"
+      fi
+    fi
+  fi
+  
+  # Check for invalid status
+  if [ "$STATUS" != "complete" ] && [ "$STATUS" != "in-progress" ] && [ "$STATUS" != "planned" ]; then
     echo -e "${YELLOW}Unknown status: $STATUS (use 'complete', 'in-progress', or 'planned')${NC}"
     return 1
   fi
+  
+  # Update roadmap focus
+  update_roadmap "$MODULE" "$STATUS"
   
   return 0
 }
@@ -473,7 +553,7 @@ feature() {
   fi
   
   echo -e "${GREEN}Created and switched to branch: feature/$FEATURE_NAME${NC}"
-  echo -e "${BLUE}To track this feature in PROJECT_TRACKER.md, update the Focus Module section.${NC}"
+  echo -e "${BLUE}To track this feature, update the focus in the Development Overview document.${NC}"
   
   return 0
 }
@@ -614,9 +694,9 @@ start_claude() {
   echo "- Current branch: $(git branch --show-current)" >> "$CONTEXT_FILE"
   echo "" >> "$CONTEXT_FILE"
   
-  # Add module tracker highlights
-  echo "## Module Status" >> "$CONTEXT_FILE"
-  grep -A 25 "Current Focus" "$MODULE_TRACKER" >> "$CONTEXT_FILE"
+  # Add overview highlights
+  echo "## Project Status" >> "$CONTEXT_FILE"
+  grep -A 10 "(Current)" "$OVERVIEW_FILE" >> "$CONTEXT_FILE"
   echo "" >> "$CONTEXT_FILE"
   
   # Add recent git activity
@@ -827,17 +907,113 @@ show_status() {
   fi
   echo ""
   
-  # Module progress
-  echo -e "${GREEN}MODULE PROGRESS:${NC}"
-  COMPLETED=$(grep -c "✅ Completed" "$MODULE_TRACKER")
-  TOTAL=$(grep -c "Status" "$MODULE_TRACKER")
-  echo "$COMPLETED of $TOTAL modules completed ($(expr $COMPLETED \* 100 / $TOTAL)%)"
+  # Module progress from GitHub Projects
+  echo -e "${GREEN}MODULE PROGRESS FROM GITHUB PROJECTS:${NC}"
   
-  # Current focus
+  # Check if gh CLI is installed
+  if command -v gh &> /dev/null; then
+    # Get project data using GitHub CLI
+    echo "Querying GitHub Projects..."
+    
+    # Get current phase from the overview document as reference
+    if [ -f "$OVERVIEW_FILE" ]; then
+      CURRENT_PHASE=$(grep -n "(Current)" "$OVERVIEW_FILE" | sed -E 's/([0-9]+):.*## Phase ([0-9]+): (.*) \(Current\)/Phase \2: \3/')
+      if [ -n "$CURRENT_PHASE" ]; then
+        echo "Current phase: $CURRENT_PHASE"
+      fi
+    fi
+    
+    # Get current focus from session file
+    if [ -f "$SESSION_FILE" ]; then
+      FOCUS=$(grep "Focus:" "$SESSION_FILE" | cut -d':' -f2- | xargs)
+      if [ -n "$FOCUS" ]; then
+        echo "Current focus: $FOCUS"
+      fi
+    fi
+    
+    # TODO: Add actual GitHub Projects API query when project is set up
+    # This will be implemented when the GitHub Project is created
+    echo "GitHub Projects integration pending project setup"
+  else
+    echo "GitHub CLI not installed. Install it to enable GitHub Projects integration."
+    echo "See: https://github.com/cli/cli#installation"
+    
+    # Fallback to basic overview from document
+    if [ -f "$OVERVIEW_FILE" ]; then
+      CURRENT_PHASE=$(grep "(Current)" "$OVERVIEW_FILE" | sed -E 's/.*## Phase [0-9]+: (.*) \(Current\).*/\1/')
+      if [ -n "$CURRENT_PHASE" ]; then
+        echo "Current phase (from overview): $CURRENT_PHASE"
+      fi
+    fi
+  fi
   echo ""
-  echo "Current focus from PROJECT_TRACKER:"
-  grep -A 1 "Focus Module" "$PROJECT_TRACKER"
-  echo ""
+}
+
+# ------------------------------------------------------------
+# GitHub Projects Helper Functions
+# ------------------------------------------------------------
+
+# Get GitHub Projects configuration details
+get_github_projects_config() {
+  # Check if gh CLI is available
+  if ! command -v gh &> /dev/null; then
+    echo -e "${RED}GitHub CLI not found. Install it first to configure GitHub Projects.${NC}"
+    echo "See: https://github.com/cli/cli#installation"
+    return 1
+  fi
+  
+  # Check if jq is available (required for JSON parsing)
+  if ! command -v jq &> /dev/null; then
+    echo -e "${RED}jq command not found. Install it first to configure GitHub Projects.${NC}"
+    echo "See: https://stedolan.github.io/jq/download/"
+    echo "Install with: sudo apt-get install jq (Debian/Ubuntu)"
+    echo "or: brew install jq (macOS with Homebrew)"
+    return 1
+  fi
+  
+  echo -e "${BLUE}Fetching GitHub Projects configuration information...${NC}"
+  
+  # Ensure user is authenticated with GitHub
+  if ! gh auth status &> /dev/null; then
+    echo -e "${YELLOW}You need to authenticate with GitHub first.${NC}"
+    echo "Run: gh auth login"
+    return 1
+  fi
+  
+  # Get repository information
+  REPO_INFO=$(gh repo view --json owner,name)
+  OWNER=$(echo "$REPO_INFO" | jq -r '.owner.login')
+  REPO_NAME=$(echo "$REPO_INFO" | jq -r '.name')
+  
+  echo "GitHub Organization/User: $OWNER"
+  echo "Repository Name: $REPO_NAME"
+  
+  # List available projects
+  echo -e "\n${BLUE}Available Projects:${NC}"
+  gh api graphql -f query='query { organization(login: "'$OWNER'") { projectsV2(first: 10) { nodes { id number title } } } }' | \
+    jq -r '.data.organization.projectsV2.nodes[] | "Project #\(.number): \(.title) (ID: \(.id))"'
+  
+  # Prompt user for project number
+  read -p "Enter the project number you want to use: " PROJECT_NUMBER
+  
+  # Get project field information
+  echo -e "\n${BLUE}Fetching fields for Project #$PROJECT_NUMBER...${NC}"
+  gh api graphql -f query='query { organization(login: "'$OWNER'") { projectV2(number: '$PROJECT_NUMBER') { fields(first: 20) { nodes { ... on ProjectV2FieldCommon { id name } ... on ProjectV2SingleSelectField { id name options { id name } } } } } } }' | \
+    jq -r '.data.organization.projectV2.fields.nodes[] | "Field: \(.name) (ID: \(.id))"'
+  
+  # For single select fields, show options
+  echo -e "\n${BLUE}For Status fields, here are the available options:${NC}"
+  gh api graphql -f query='query { organization(login: "'$OWNER'") { projectV2(number: '$PROJECT_NUMBER') { fields(first: 20) { nodes { ... on ProjectV2SingleSelectField { id name options { id name } } } } } } }' | \
+    jq -r '.data.organization.projectV2.fields.nodes[] | select(.options != null) | "Field: \(.name) (ID: \(.id))\n  Options: \(.options[] | "    \(.name) (ID: \(.id))")"'
+  
+  echo -e "\n${GREEN}Use this information to update the GitHub Projects configuration in synergy.sh${NC}"
+  echo "Example:"
+  echo "GITHUB_ORG=\"$OWNER\""
+  echo "GITHUB_REPO=\"$REPO_NAME\""
+  echo "GITHUB_PROJECT_NUMBER=$PROJECT_NUMBER"
+  echo "GITHUB_STATUS_FIELD_ID=\"[Field ID from above]\"  # Replace with actual ID"
+  
+  return 0
 }
 
 # ------------------------------------------------------------
@@ -864,8 +1040,8 @@ show_help() {
   echo ""
   echo -e "${GREEN}Documentation Management:${NC}"
   echo "  * Documentation is automatically updated when using update-module"
-  echo "  * Both MODULE_TRACKER.md and DEVELOPMENT_ROADMAP.md are kept in sync"
-  echo "  * Modules are properly marked as completed with [x] in the roadmap"
+  echo "  * Development Overview document is the single source of truth"
+  echo "  * Modules are properly marked as completed with [x] in the overview"
   echo ""
   echo -e "${GREEN}Git Integration:${NC}"
   echo "  feature NAME  - Create a new feature branch"
@@ -881,6 +1057,10 @@ show_help() {
   echo -e "${GREEN}Automation:${NC}"
   echo "  auto-on       - Start auto-commit in background"
   echo "  auto-off      - Stop auto-commit background process"
+  echo ""
+  echo -e "${GREEN}GitHub Projects:${NC}"
+  echo "  github-config - Configure GitHub Projects integration"
+  echo "                  (Retrieves IDs needed for project configuration)"
   echo ""
   echo "Most operations automatically update SESSION.md and integrate with git."
   echo "Documentation is kept in sync with development progress automatically."
@@ -945,6 +1125,11 @@ case "$COMMAND" in
     ;;
     
   # No additional documentation management - it's integrated into update-module
+    
+  # GitHub Projects configuration
+  github-config)
+    get_github_projects_config
+    ;;
     
   # Help and default
   help|*)
