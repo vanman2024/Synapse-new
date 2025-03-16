@@ -6,10 +6,21 @@ This document serves as a reference guide for Claude when working on the Synapse
 
 ### General Guidelines
 - Follow test-driven development (TDD) practices
-- Write modular, maintainable code
+- Write modular, maintainable code with clear separation of concerns
 - Prioritize readability and documentation
 - Apply SOLID principles and design patterns appropriately
 - Focus on one component at a time until it's complete and tested
+
+### Modular Development Principles
+- **Start with Modular Architecture**: Begin every project with a clear modular structure
+- **Single Responsibility**: Each module should have a clear, singular purpose
+- **Lazy Loading**: Load modules only when needed to improve performance
+- **Clear Interfaces**: Define explicit interfaces between modules
+- **Centralized Configuration**: Maintain configuration in a central location
+- **DRY (Don't Repeat Yourself)**: Use helper functions for common operations
+- **Progressive Enhancement**: Build core functionality first, then add features
+- **Proper Abstraction**: Abstract common patterns into reusable components
+- **Documentation First**: Document the module structure before implementation
 
 ### Workflow Process
 1. Start every session with `./scripts/workflow/claude-start.sh`
@@ -104,6 +115,42 @@ This document serves as a reference guide for Claude when working on the Synapse
 4. Feature completeness
 
 Always favor clean, well-tested code over quick implementations. Quality is more important than quantity.
+
+## Code Organization Standards
+
+### Script and Module Structure
+- **Module-Based Organization**: Organize code into logical, focused modules
+- **Hierarchical Structure**: Create a clear hierarchy of modules and submodules
+- **Directory Structure**:
+  ```
+  /project/
+    /scripts/
+      /core/         # Core functionality
+        config.sh    # Centralized configuration
+        helpers.sh   # Common helper functions
+        main.sh      # Core application logic
+      /integrations/ # External service integrations
+      /utils/        # Utility functions and tools
+    main.sh          # Main entry point (minimal code)
+  ```
+- **Entry Point Design**: Keep main scripts lean by delegating to modules
+- **Convention Over Configuration**: Follow consistent naming and organization
+
+### Module Implementation
+- **Config First**: Start with configuration and constants
+- **Function-Based**: Organize code into well-named functions
+- **Consistent Error Handling**: Standardize error management across modules
+- **Module Dependencies**: Document and minimize dependencies between modules
+- **Interface Documentation**: Document the public API of each module
+- **Semantic Versioning**: Version modules independently when appropriate
+
+### Example From Synergy
+The synergy.sh workflow script was refactored from a monolithic 1,500+ line script to a modular architecture:
+- Main script reduced to ~160 lines serving as a command router
+- Functionality organized into logical modules (session, module, git-hooks)
+- Configuration centralized in a single file
+- Integration points clearly defined
+- Modules loaded on-demand for better performance
 
 ## Reference Material
 
