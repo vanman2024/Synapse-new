@@ -180,8 +180,8 @@ async function logSession(session) {
       'Summary': session.summary || '',
       'Commits': session.commits ? session.commits.join(', ') : '',
       'Notes': session.notes || session.summary || '',
-      'BranchContext': session.branchContext || '',
-      'Date Created': sessionDate.toISOString()
+      'BranchContext': session.branchContext || ''
+      // Removed 'Date Created' as it appears to be a computed field in Airtable
     };
     
     // Add properly formatted date (required field)
