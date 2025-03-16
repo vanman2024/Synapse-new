@@ -373,7 +373,6 @@ export class ContentService {
       // Create new content version with revision
       const newVersion: Omit<Content, 'id' | 'createdAt' | 'updatedAt'> = {
         ...originalContent,
-        id: undefined,
         status: ContentStatus.DRAFT,
         rawText: revisedText,
         formattedText: revisedText,

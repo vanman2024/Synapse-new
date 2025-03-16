@@ -1,6 +1,11 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
+import { Container } from 'inversify';
+import 'reflect-metadata';
+
+// Create the container
+export const container = new Container();
 
 // Load environment variables from .env file
 dotenv.config();
