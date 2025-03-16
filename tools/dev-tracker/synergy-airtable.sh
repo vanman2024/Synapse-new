@@ -370,6 +370,35 @@ case "$COMMAND" in
       SESSION_ID=$(cat "/tmp/synergy/session_id")
     fi
     
+    # If no module specified but we have an active session, try to get the module from the session
+    if [ -z "$MODULE" ] && [ -n "$SESSION_ID" ]; then
+      # Get the module from the active session
+      MODULE_FROM_SESSION=$($NODE_BIN -e "
+        const airtable = require('$SCRIPT_DIR/airtable-integration');
+        airtable.getSession('$SESSION_ID')
+          .then(session => {
+            if (session && session.fields && session.fields.Focus && session.fields.Focus.length > 0) {
+              // Get the module name from the focus ID
+              return airtable.getTable('Modules').find(session.fields.Focus[0]);
+            }
+            return null;
+          })
+          .then(module => {
+            if (module && module.fields && module.fields['Module Name']) {
+              console.log(module.fields['Module Name']);
+            }
+          })
+          .catch(err => {
+            console.error(err);
+          });
+      ")
+      
+      if [ -n "$MODULE_FROM_SESSION" ]; then
+        MODULE="$MODULE_FROM_SESSION"
+        echo -e "${BLUE}Using module from active session: ${MODULE}${NC}"
+      fi
+    fi
+    
     # Call Node.js script to register or update component using the improved function
     $NODE_BIN -e "
       const airtableIntegration = require('$SCRIPT_DIR/airtable-integration');

@@ -28,25 +28,36 @@ start_session() {
     fi
   fi
   
-  # Get current module focus from the overview document
-  # Look for the phase marked (Current) then extract modules from that phase
-  CURRENT_PHASE_LINE=$(grep -n "(Current)" "$OVERVIEW_FILE" | cut -d':' -f1)
-  
-  if [ -n "$CURRENT_PHASE_LINE" ]; then
-    # Look for incomplete modules (with "[ ]" rather than "[x]") in the current phase
-    NEXT_PHASE_LINE=$(grep -n "## Phase" "$OVERVIEW_FILE" | awk -v start=$CURRENT_PHASE_LINE '$1 > start {print $1; exit}' | cut -d':' -f1)
+  # Use our API to get the current focus module and phase
+  # Allow overriding focus module as an argument
+  FOCUS_MODULE=""
+  if [ ! -z "$1" ]; then
+    FOCUS_MODULE="$1"
+  else
+    # Use Node.js to get the next module to work on
+    NEXT_MODULE_RESULT=$(node -e "
+      const airtable = require('$REPO_DIR/tools/dev-tracker/airtable-integration');
+      
+      // Find next module to work on
+      airtable.getNextModuleToWorkOn()
+        .then(module => {
+          if (module && module.fields) {
+            console.log(module.fields['Module Name'] || 'Development Tasks');
+          } else {
+            console.log('Development Tasks');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          console.log('Development Tasks');
+        });
+    ")
     
-    echo "DEBUG: CURRENT_PHASE_LINE=$CURRENT_PHASE_LINE, NEXT_PHASE_LINE=$NEXT_PHASE_LINE"
-    
-    # Only read to the end of file, as we might have issues with phase line detection
-    FOCUS_MODULE=$(sed -n "$CURRENT_PHASE_LINE,\$p" "$OVERVIEW_FILE" | grep -m 1 "\[ \]" | sed -E 's/.*\[ \] (.*)/\1/')
-    
-    echo "DEBUG: FOCUS_MODULE=$FOCUS_MODULE"
-  fi
-  
-  # If no focus module found, use a generic name
-  if [ -z "$FOCUS_MODULE" ]; then
-    FOCUS_MODULE="Development Tasks"
+    if [ -n "$NEXT_MODULE_RESULT" ]; then
+      FOCUS_MODULE="$NEXT_MODULE_RESULT"
+    else
+      FOCUS_MODULE="Development Tasks"
+    fi
   fi
   
   # Create a temporary file to mark active session
@@ -160,8 +171,53 @@ end_session() {
     SUMMARY="$SUMMARY Module progress: $MODULE_PROGRESS"
   fi
   
+  # Check if the summary indicates module completion
+  MODULE_COMPLETE=0
+  if [[ "$SUMMARY" == *"complete"* || "$SUMMARY" == *"done"* || "$SUMMARY" == *"finish"* ]]; then
+    MODULE_COMPLETE=1
+  fi
+  
+  # Get the current end time
+  END_TIME=$(date '+%H:%M')
+  
   # Update the session in Airtable
-  "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Completed" "$END_COMMIT" "$SUMMARY" "$FOCUS_MODULE"
+  if [ $MODULE_COMPLETE -eq 1 ]; then
+    # Also update module status to completed
+    node -e "
+      const airtable = require('$REPO_DIR/tools/dev-tracker/airtable-integration');
+      
+      // Get session ID
+      const sessionId = require('fs').readFileSync('/tmp/synergy/session_id', 'utf8');
+      
+      // Update session with module completion
+      airtable.updateSession(sessionId, {
+        status: 'Completed',
+        endCommit: '$END_COMMIT',
+        endTime: '$END_TIME',
+        summary: 'Completed module: $FOCUS_MODULE. $SUMMARY',
+        module: '$FOCUS_MODULE'
+      })
+      .catch(err => console.error('Error updating session:', err));
+    "
+  else
+    # Session completed but module may still be in progress
+    node -e "
+      const airtable = require('$REPO_DIR/tools/dev-tracker/airtable-integration');
+      
+      // Get session ID
+      const sessionId = require('fs').readFileSync('/tmp/synergy/session_id', 'utf8');
+      
+      // Update session with module completion
+      airtable.updateSession(sessionId, {
+        status: 'Completed',
+        endCommit: '$END_COMMIT',
+        endTime: '$END_TIME',
+        summary: '$SUMMARY',
+        module: '$FOCUS_MODULE'
+      })
+      .catch(err => console.error('Error updating session:', err));
+    "
+  fi
   
   # Stop auto-commit if running
   source "$REPO_DIR/scripts/core/git-hooks.sh"

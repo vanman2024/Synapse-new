@@ -127,6 +127,40 @@ async function updateModuleStatus(moduleName, status, phaseName = null) {
 }
 
 /**
+ * Format date for Airtable
+ * @param {Date|string} date - Date to format
+ * @returns {string} - Formatted date string
+ */
+function formatDate(date) {
+  if (!date) return '';
+  
+  const d = typeof date === 'string' ? new Date(date) : date;
+  
+  // If invalid date, return empty string
+  if (isNaN(d.getTime())) return '';
+  
+  // Format as ISO string (YYYY-MM-DD)
+  return d.toISOString().split('T')[0];
+}
+
+/**
+ * Format time for Airtable
+ * @param {Date|string} date - Date to format
+ * @returns {string} - Formatted time string (HH:MM)
+ */
+function formatTime(date) {
+  if (!date) return '';
+  
+  const d = typeof date === 'string' ? new Date(date) : date;
+  
+  // If invalid date, return empty string
+  if (isNaN(d.getTime())) return '';
+  
+  // Format as HH:MM
+  return d.toTimeString().split(' ')[0].substring(0, 5);
+}
+
+/**
  * Log a session in Airtable
  * @param {Object} session - Session data
  * @returns {Promise<Object>} - Created record
@@ -135,29 +169,46 @@ async function logSession(session) {
   try {
     console.log('Logging session in Airtable...');
     
+    // Get current date/time if not provided
+    const now = new Date();
+    const sessionDate = session.date ? new Date(session.date) : now;
+    
     // Prepare session record
     const sessionRecord = {
       'Branch': session.branch || '',
-      'Status': session.status || 'Completed',
+      'Status': session.status || 'Active',
       'Summary': session.summary || '',
       'Commits': session.commits ? session.commits.join(', ') : '',
       'Notes': session.notes || session.summary || '',
-      'BranchContext': session.branchContext || ''
+      'BranchContext': session.branchContext || '',
+      'Date Created': sessionDate.toISOString()
     };
+    
+    // Add properly formatted date (required field)
+    sessionRecord['Date'] = formatDate(sessionDate);
+    
+    // Add start and end times
+    if (session.startTime) {
+      const startTime = typeof session.startTime === 'string' 
+        ? session.startTime 
+        : formatTime(session.startTime);
+      sessionRecord['StartTime'] = startTime;
+    }
+    
+    if (session.endTime) {
+      const endTime = typeof session.endTime === 'string'
+        ? session.endTime
+        : formatTime(session.endTime);
+      sessionRecord['EndTime'] = endTime;
+    }
     
     // Add Git commit hashes
     if (session.startCommit) {
       sessionRecord['StartCommit'] = session.startCommit;
-    } else if (session.startTime) {
-      // For backward compatibility, if startCommit isn't provided but startTime is
-      sessionRecord['StartCommit'] = session.startTime;
     }
     
     if (session.endCommit) {
       sessionRecord['EndCommit'] = session.endCommit;
-    } else if (session.endTime) {
-      // For backward compatibility, if endCommit isn't provided but endTime is
-      sessionRecord['EndCommit'] = session.endTime;
     }
     
     // If there's a related module, look up its ID and establish the link
@@ -172,11 +223,67 @@ async function logSession(session) {
           // Set linked record field for Focus - must be an array of IDs
           sessionRecord['Focus'] = [moduleRecord.id];
           console.log(`Linked session to module: ${moduleRecord.fields['Module Name']}`);
+          
+          // If module doesn't have "In Progress" status, update it
+          if (moduleRecord.fields.Status !== 'In Progress') {
+            console.log(`Updating module status to "In Progress"`);
+            await airtableClient.updateRecord('Modules', moduleRecord.id, {
+              'Status': 'In Progress'
+            });
+          }
+          
+          // Also update the session summary if it's generic
+          if (!session.summary || session.summary.includes('Development Tasks')) {
+            const moduleName = moduleRecord.fields['Module Name'];
+            sessionRecord['Summary'] = `Working on module: ${moduleName}`;
+            console.log(`Updated session summary with module name`);
+          }
         } else {
           console.log(`No matching module found for "${session.module}"`);
+          
+          // If no module found but we should be working on something,
+          // try to find the next module to work on
+          try {
+            const nextModule = await getNextModuleToWorkOn();
+            if (nextModule) {
+              console.log(`Suggesting next module to work on: ${nextModule.fields['Module Name']}`);
+              sessionRecord['Focus'] = [nextModule.id];
+              sessionRecord['Summary'] = `Working on module: ${nextModule.fields['Module Name']}`;
+              
+              // Also update module status
+              if (nextModule.fields.Status !== 'In Progress') {
+                await airtableClient.updateRecord('Modules', nextModule.id, {
+                  'Status': 'In Progress'
+                });
+                console.log(`Updated module status to "In Progress"`);
+              }
+            }
+          } catch (nextModuleError) {
+            console.log(`Error finding next module: ${nextModuleError.message}`);
+          }
         }
       } catch (error) {
         console.log(`Could not link to module: ${error.message}`);
+      }
+    } else {
+      // No module specified - try to find the next one to work on
+      try {
+        const nextModule = await getNextModuleToWorkOn();
+        if (nextModule) {
+          console.log(`No module specified, suggesting next module: ${nextModule.fields['Module Name']}`);
+          sessionRecord['Focus'] = [nextModule.id];
+          sessionRecord['Summary'] = `Working on module: ${nextModule.fields['Module Name']}`;
+          
+          // Also update module status
+          if (nextModule.fields.Status !== 'In Progress') {
+            await airtableClient.updateRecord('Modules', nextModule.id, {
+              'Status': 'In Progress'
+            });
+            console.log(`Updated module status to "In Progress"`);
+          }
+        }
+      } catch (nextModuleError) {
+        console.log(`Error finding next module: ${nextModuleError.message}`);
       }
     }
     
@@ -624,6 +731,12 @@ async function updateSession(sessionId, updateData) {
   try {
     console.log(`Updating session ${sessionId} in Airtable...`);
     
+    // Get current session data first
+    const currentSession = await getSession(sessionId);
+    if (!currentSession) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+    
     // Prepare update object
     const updateObject = {};
     
@@ -635,12 +748,94 @@ async function updateSession(sessionId, updateData) {
     // Add Git context fields
     if (updateData.branchContext) updateObject['BranchContext'] = updateData.branchContext;
     
+    // Handle date/time fields properly
+    if (updateData.date) {
+      updateObject['Date'] = formatDate(updateData.date);
+    }
+    
+    if (updateData.startTime) {
+      const startTime = typeof updateData.startTime === 'string'
+        ? updateData.startTime
+        : formatTime(updateData.startTime);
+      updateObject['StartTime'] = startTime;
+    }
+    
+    if (updateData.endTime) {
+      const endTime = typeof updateData.endTime === 'string'
+        ? updateData.endTime
+        : formatTime(updateData.endTime);
+      updateObject['EndTime'] = endTime;
+    }
+    
     // Handle commit hashes
+    if (updateData.startCommit) {
+      updateObject['StartCommit'] = updateData.startCommit;
+    }
+    
     if (updateData.endCommit) {
       updateObject['EndCommit'] = updateData.endCommit;
-    } else if (updateData.endTime) {
-      // For backward compatibility
-      updateObject['EndCommit'] = updateData.endTime;
+    }
+    
+    // Handle session completion - when status changes to Completed
+    if (updateData.status === 'Completed' && currentSession.fields.Status !== 'Completed') {
+      console.log('Session is being completed - checking if we should update module status');
+      
+      // Set end time if not already set
+      if (!updateObject['EndTime']) {
+        updateObject['EndTime'] = formatTime(new Date());
+      }
+      
+      // Ensure we have an end commit
+      if (!updateObject['EndCommit'] && !currentSession.fields.EndCommit) {
+        try {
+          // Try to get the latest commit
+          const latestCommit = updateData.commits?.[0] || 
+            currentSession.fields.Commits?.split(',')[0] ||
+            'session-end';
+          
+          updateObject['EndCommit'] = latestCommit;
+        } catch (error) {
+          console.log(`Error getting latest commit: ${error.message}`);
+        }
+      }
+      
+      // Check if we should mark the module as completed
+      const focusModuleId = currentSession.fields.Focus?.[0];
+      
+      if (focusModuleId) {
+        try {
+          // Get the module
+          const module = await airtableClient.getTable('Modules').find(focusModuleId);
+          
+          if (module) {
+            const moduleName = module.fields['Module Name'] || 'Unknown';
+            
+            // Check if user indicated module is complete
+            const summaryLower = (updateData.summary || '').toLowerCase();
+            const hasCompleteKeyword = 
+              summaryLower.includes('complet') || 
+              summaryLower.includes('finish') || 
+              summaryLower.includes('done');
+              
+            if (hasCompleteKeyword) {
+              console.log(`Session summary indicates module "${moduleName}" completion, updating status`);
+              
+              await airtableClient.updateRecord('Modules', focusModuleId, {
+                'Status': 'Completed'
+              });
+              
+              // Add module completion to summary
+              if (!updateObject['Summary']) {
+                updateObject['Summary'] = `Completed module: ${moduleName}`;
+              }
+            } else {
+              console.log(`Module "${moduleName}" likely still in progress`);
+            }
+          }
+        } catch (error) {
+          console.log(`Error checking module completion: ${error.message}`);
+        }
+      }
     }
     
     // If there's a module to link, look it up and create the link
@@ -989,14 +1184,23 @@ async function registerComponent(componentData) {
 }
 
 module.exports = {
+  // Core functionality
   updateModuleStatus,
   logSession,
-  getModuleInfo,
-  getCurrentPhase,
-  getPhaseModules,
   updateSession,
   getSession,
   getRecentSessions,
+  registerComponent,
+  
+  // Phase and module functions
+  getCurrentPhase,
+  getAllPhases,
+  getPhaseModules,
+  getModuleInfo,
   findModuleByName,
-  registerComponent
+  getNextModuleToWorkOn,
+  
+  // Utility functions
+  formatDate,
+  formatTime
 };
