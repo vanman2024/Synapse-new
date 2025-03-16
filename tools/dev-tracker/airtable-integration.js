@@ -249,6 +249,37 @@ async function getModuleInfo(moduleName) {
 }
 
 /**
+ * Get all phases from Airtable
+ * @returns {Promise<Array>} - Array of phase records
+ */
+async function getAllPhases() {
+  try {
+    console.log('Getting all phases from Airtable...');
+    
+    // Get all phases
+    const allPhases = await airtableClient.getAllRecords('Phases');
+    
+    if (allPhases.length === 0) {
+      console.error('No phases found in Airtable.');
+      return [];
+    }
+    
+    // Sort phases by Phase Number
+    allPhases.sort((a, b) => {
+      const aNum = a.fields['Phase Number'] || 999;
+      const bNum = b.fields['Phase Number'] || 999;
+      return aNum - bNum;
+    });
+    
+    console.log(`Found ${allPhases.length} phases`);
+    return allPhases;
+  } catch (error) {
+    console.error('Error getting phases from Airtable:', error);
+    return [];
+  }
+}
+
+/**
  * Get current phase from Airtable
  * @returns {Promise<Object>} - Current phase info
  */
@@ -256,30 +287,63 @@ async function getCurrentPhase() {
   try {
     console.log('Getting current phase from Airtable...');
     
-    // Based on list-fields.js, we know the actual field names in Phases table:
-    // - Description
-    // - Modules
-    // - Phase Name
-    // - Phase Number
+    // Try to find a phase with explicit "Current" status first
+    try {
+      const currentPhases = await airtableClient.findRecords('Phases', '{Status} = "Current"');
+      if (currentPhases && currentPhases.length > 0) {
+        console.log(`Found current phase by status: ${currentPhases[0].fields['Phase Name'] || 'Unknown'}`);
+        return {
+          record: currentPhases[0],
+          fields: currentPhases[0].fields
+        };
+      }
+    } catch (error) {
+      console.log('No phases with Current status found, checking for In Progress status...');
+    }
     
-    // Get all phases and look for the lowest Phase Number
-    // which usually indicates the current phase
-    const allPhases = await airtableClient.getAllRecords('Phases');
+    // Try looking for "In Progress" status
+    try {
+      const inProgressPhases = await airtableClient.findRecords('Phases', '{Status} = "In Progress"');
+      if (inProgressPhases && inProgressPhases.length > 0) {
+        console.log(`Found in-progress phase: ${inProgressPhases[0].fields['Phase Name'] || 'Unknown'}`);
+        return {
+          record: inProgressPhases[0],
+          fields: inProgressPhases[0].fields
+        };
+      }
+    } catch (error) {
+      console.log('No phases with In Progress status, using phase order...');
+    }
+    
+    // If no explicit current phase, get all phases and determine current by completion
+    const allPhases = await getAllPhases();
     
     if (allPhases.length === 0) {
-      console.error('No phases found in Airtable.');
       return null;
     }
     
-    // Sort phases by Phase Number and get the first one
-    allPhases.sort((a, b) => {
-      const aNum = a.fields['Phase Number'] || 999;
-      const bNum = b.fields['Phase Number'] || 999;
-      return aNum - bNum;
-    });
+    // Check each phase in order to find the earliest incomplete one
+    for (const phase of allPhases) {
+      // Skip phases marked as completed
+      if (phase.fields.Status === 'Completed') {
+        continue;
+      }
+      
+      // If we find a non-completed phase, that's our current one
+      console.log(`Selected current phase based on completion: ${phase.fields['Phase Name'] || 'Unknown'}`);
+      return {
+        record: phase,
+        fields: phase.fields
+      };
+    }
     
-    console.log(`Found current phase: ${allPhases[0].fields['Phase Name'] || 'Unknown'}`);
-    return allPhases[0].fields;
+    // If all phases are completed, return the last one
+    const lastPhase = allPhases[allPhases.length - 1];
+    console.log(`All phases complete, returning last phase: ${lastPhase.fields['Phase Name'] || 'Unknown'}`);
+    return {
+      record: lastPhase,
+      fields: lastPhase.fields
+    };
   } catch (error) {
     console.error('Error getting current phase from Airtable:', error);
     return null;
@@ -288,33 +352,69 @@ async function getCurrentPhase() {
 
 /**
  * Get all modules for a phase from Airtable
- * @param {number} phaseNumber - Phase number
- * @returns {Promise<Array>} - List of modules
+ * @param {string|Object} phase - Phase number, ID, or record object
+ * @param {string} [statusFilter] - Optional status to filter modules by
+ * @returns {Promise<Array>} - List of module records
  */
-async function getPhaseModules(phaseNumber) {
+async function getPhaseModules(phase, statusFilter = null) {
   try {
-    console.log(`Getting modules for phase ${phaseNumber} from Airtable...`);
-    
-    // First, try to get the phase record
+    // Handle different phase input types
     let phaseRecord = null;
-    try {
-      const phases = await airtableClient.findRecords('Phases', 
-        `{Phase Number} = ${phaseNumber}`);
-      
-      if (phases.length > 0) {
-        phaseRecord = phases[0];
+    let phaseNumber = null;
+    
+    if (typeof phase === 'object' && phase !== null) {
+      // If a phase record object was passed directly
+      phaseRecord = phase.record || phase;
+      phaseNumber = phaseRecord.fields['Phase Number'];
+      console.log(`Getting modules for phase "${phaseRecord.fields['Phase Name']}" (${phaseNumber}) from Airtable...`);
+    } else {
+      // If a phase number or ID was passed
+      phaseNumber = typeof phase === 'string' ? parseInt(phase, 10) : phase;
+      if (isNaN(phaseNumber)) {
+        // Treat as phase ID
+        try {
+          phaseRecord = await airtableClient.getTable('Phases').find(phase);
+          phaseNumber = phaseRecord?.fields['Phase Number'];
+        } catch (error) {
+          console.log(`Error finding phase by ID: ${error.message}`);
+        }
+      } else {
+        // Find by phase number
+        try {
+          const phases = await airtableClient.findRecords('Phases', 
+            `{Phase Number} = ${phaseNumber}`);
+            
+          if (phases.length > 0) {
+            phaseRecord = phases[0];
+          }
+        } catch (error) {
+          console.log(`Error finding phase by number: ${error.message}`);
+        }
       }
-    } catch (error) {
-      console.log(`Error finding phase by number: ${error.message}`);
+      
+      console.log(`Getting modules for phase ${phaseNumber} from Airtable...`);
     }
     
     if (!phaseRecord) {
       console.log(`Phase ${phaseNumber} not found, getting all modules instead`);
       const allModules = await airtableClient.getAllRecords('Modules');
-      return allModules.map(record => record.fields);
+      console.log(`Found ${allModules.length} total modules`);
+      
+      if (statusFilter) {
+        const filteredModules = allModules.filter(
+          m => m.fields.Status === statusFilter
+        );
+        console.log(`Filtered to ${filteredModules.length} modules with status "${statusFilter}"`);
+        return filteredModules;
+      }
+      
+      return allModules;
     }
     
-    // Check if the phase has linked modules
+    // Start with an empty array of module records
+    let moduleRecords = [];
+    
+    // Method 1: Check if the phase has linked modules
     if (phaseRecord.fields.Modules && 
         Array.isArray(phaseRecord.fields.Modules) && 
         phaseRecord.fields.Modules.length > 0) {
@@ -322,47 +422,195 @@ async function getPhaseModules(phaseNumber) {
       console.log(`Found ${phaseRecord.fields.Modules.length} linked modules for phase ${phaseNumber}`);
       
       // Get all modules that are linked to this phase
-      const linkedModules = [];
-      
       for (const moduleId of phaseRecord.fields.Modules) {
         try {
           const module = await airtableClient.getTable('Modules').find(moduleId);
-          linkedModules.push(module);
+          if (module) {
+            moduleRecords.push(module);
+          }
         } catch (error) {
           console.log(`Error fetching linked module ${moduleId}: ${error.message}`);
         }
       }
-      
-      return linkedModules.map(record => record.fields);
     }
     
-    // If there are no linked modules, try to find by Phase field
-    try {
-      // Get all modules
-      const allModules = await airtableClient.getAllRecords('Modules');
-      
-      // Filter modules by phase
-      const phaseModules = allModules.filter(module => {
-        if (!module.fields.Phase || !Array.isArray(module.fields.Phase)) {
-          return false;
-        }
+    // Method 2: If few or no linked modules found, try to find by Phase field
+    if (moduleRecords.length === 0) {
+      try {
+        // Get all modules
+        const allModules = await airtableClient.getAllRecords('Modules');
+        console.log(`Checking all ${allModules.length} modules for phase links`);
         
-        // Check if any of the linked phases match our phase
-        return module.fields.Phase.includes(phaseRecord.id);
-      });
-      
-      console.log(`Found ${phaseModules.length} modules for phase ${phaseNumber} via Phase field`);
-      return phaseModules.map(record => record.fields);
-    } catch (error) {
-      console.log(`Error finding modules by Phase field: ${error.message}`);
+        // Filter modules by phase
+        moduleRecords = allModules.filter(module => {
+          if (!module.fields.Phase || !Array.isArray(module.fields.Phase)) {
+            return false;
+          }
+          
+          // Check if any of the linked phases match our phase
+          return module.fields.Phase.includes(phaseRecord.id);
+        });
+        
+        console.log(`Found ${moduleRecords.length} modules for phase ${phaseNumber} via Phase field`);
+      } catch (error) {
+        console.log(`Error finding modules by Phase field: ${error.message}`);
+      }
     }
     
-    console.log(`No modules found for phase ${phaseNumber}, returning all modules`);
-    const allModules = await airtableClient.getAllRecords('Modules');
-    return allModules.map(record => record.fields);
+    // Method 3: If still no modules found, fallback to text search in Description
+    if (moduleRecords.length === 0) {
+      try {
+        const allModules = await airtableClient.getAllRecords('Modules');
+        
+        // Filter by phase in the description field (many descriptions contain phase names)
+        const phaseName = phaseRecord.fields['Phase Name'] || '';
+        moduleRecords = allModules.filter(module => {
+          const description = module.fields.Description || '';
+          return description.includes(phaseName);
+        });
+        
+        console.log(`Found ${moduleRecords.length} modules for phase ${phaseNumber} via description text search`);
+      } catch (error) {
+        console.log(`Error finding modules by description: ${error.message}`);
+      }
+    }
+    
+    // Fallback: If still no modules, get all
+    if (moduleRecords.length === 0) {
+      console.log(`No modules found for phase ${phaseNumber}, returning all modules`);
+      moduleRecords = await airtableClient.getAllRecords('Modules');
+    }
+    
+    // De-duplicate modules by ID (in case we have duplicates)
+    const uniqueModules = [];
+    const seenIds = new Set();
+    
+    for (const module of moduleRecords) {
+      if (!seenIds.has(module.id)) {
+        uniqueModules.push(module);
+        seenIds.add(module.id);
+      }
+    }
+    
+    console.log(`Found ${uniqueModules.length} unique modules for phase ${phaseNumber}`);
+    
+    // Apply status filter if requested
+    if (statusFilter) {
+      const filteredModules = uniqueModules.filter(
+        m => m.fields.Status === statusFilter
+      );
+      console.log(`Filtered to ${filteredModules.length} modules with status "${statusFilter}"`);
+      return filteredModules;
+    }
+    
+    return uniqueModules;
   } catch (error) {
     console.error(`Error getting phase modules from Airtable:`, error);
     return [];
+  }
+}
+
+/**
+ * Get next module to work on based on current phase and module status
+ * @returns {Promise<Object>} Module record to work on
+ */
+async function getNextModuleToWorkOn() {
+  try {
+    console.log('Finding next module to work on...');
+    
+    // 1. Get the current phase
+    const currentPhase = await getCurrentPhase();
+    if (!currentPhase) {
+      throw new Error('Could not determine current phase');
+    }
+    
+    console.log(`Current phase: ${currentPhase.fields['Phase Name'] || 'Unknown'}`);
+    
+    // 2. First check for any "In Progress" modules in this phase
+    const inProgressModules = await getPhaseModules(currentPhase, 'In Progress');
+    
+    if (inProgressModules.length > 0) {
+      console.log(`Found ${inProgressModules.length} in-progress modules in current phase`);
+      
+      // Return the first in-progress module
+      return inProgressModules[0];
+    }
+    
+    // 3. If no in-progress modules, look for "Planned" modules
+    const plannedModules = await getPhaseModules(currentPhase, 'Planned');
+    
+    if (plannedModules.length > 0) {
+      console.log(`Found ${plannedModules.length} planned modules in current phase`);
+      
+      // Return the first planned module
+      return plannedModules[0];
+    }
+    
+    // 4. If no planned modules, check all modules without a status
+    const allModules = await getPhaseModules(currentPhase);
+    const modulesWithoutStatus = allModules.filter(m => !m.fields.Status);
+    
+    if (modulesWithoutStatus.length > 0) {
+      console.log(`Found ${modulesWithoutStatus.length} modules without a status in current phase`);
+      
+      // Return the first module without a status
+      return modulesWithoutStatus[0];
+    }
+    
+    // 5. If all modules have a status, check the next phase
+    console.log('No incomplete modules in current phase, checking next phase...');
+    
+    const allPhases = await getAllPhases();
+    const currentPhaseIndex = allPhases.findIndex(p => p.id === currentPhase.record.id);
+    
+    if (currentPhaseIndex >= 0 && currentPhaseIndex < allPhases.length - 1) {
+      const nextPhase = allPhases[currentPhaseIndex + 1];
+      
+      console.log(`Checking next phase: ${nextPhase.fields['Phase Name'] || 'Unknown'}`);
+      
+      // Check for planned modules in the next phase
+      const nextPhaseModules = await getPhaseModules(nextPhase, 'Planned');
+      
+      if (nextPhaseModules.length > 0) {
+        console.log(`Found ${nextPhaseModules.length} planned modules in next phase`);
+        
+        // Return the first planned module from the next phase
+        return nextPhaseModules[0];
+      }
+      
+      // Check for modules without status in the next phase
+      const allNextPhaseModules = await getPhaseModules(nextPhase);
+      const nextPhaseModulesWithoutStatus = allNextPhaseModules.filter(m => !m.fields.Status);
+      
+      if (nextPhaseModulesWithoutStatus.length > 0) {
+        console.log(`Found ${nextPhaseModulesWithoutStatus.length} modules without a status in next phase`);
+        
+        // Return the first module without a status from the next phase
+        return nextPhaseModulesWithoutStatus[0];
+      }
+    }
+    
+    // 6. If we still couldn't find anything, return the most recently updated module
+    console.log('No incomplete modules found, getting most recently updated module...');
+    
+    const allRecords = await airtableClient.getAllRecords('Modules');
+    
+    if (allRecords.length === 0) {
+      throw new Error('No modules found in Airtable');
+    }
+    
+    // Sort by last modified date
+    allRecords.sort((a, b) => {
+      const aDate = new Date(a.fields['Last Modified'] || a.fields['Created'] || 0);
+      const bDate = new Date(b.fields['Last Modified'] || b.fields['Created'] || 0);
+      return bDate - aDate; // Descending order (most recent first)
+    });
+    
+    console.log(`Returning most recently updated module: ${allRecords[0].fields['Module Name'] || 'Unknown'}`);
+    return allRecords[0];
+  } catch (error) {
+    console.error('Error finding next module to work on:', error);
+    throw error;
   }
 }
 
