@@ -1,0 +1,15 @@
+{
+  "id": "recgohVWC5K6yNnyh",
+  "createdTime": "2025-03-15T21:24:45.000Z",
+  "fields": {
+    "Branch": "feature/content-service",
+    "Focus": [
+      "reclmrDMTUK4hufPu"
+    ],
+    "Status": "Completed",
+    "Summary": "Need to improve error handling for API rate limiting\n",
+    "Commits": "\\- feat: Add content workflow manager<br>- feat: Implement context analyzer<br>- fix: Handle edge cases in content processing\n",
+    "Notes": "Need to improve error handling for API rate limiting",
+    "Date Created": "2025-03-15T21:24:45.000Z"
+  }
+}
