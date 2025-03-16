@@ -207,9 +207,10 @@ async function logSession(session) {
       sessionRecord['StartCommit'] = session.startCommit;
     }
     
-    if (session.endCommit) {
+    // Temporarily disable EndCommit until the field is added to Airtable
+    /*if (session.endCommit) {
       sessionRecord['EndCommit'] = session.endCommit;
-    }
+    }*/
     
     // If there's a related module, look up its ID and establish the link
     if (session.module) {
@@ -772,9 +773,10 @@ async function updateSession(sessionId, updateData) {
       updateObject['StartCommit'] = updateData.startCommit;
     }
     
-    if (updateData.endCommit) {
+    // Temporarily disable EndCommit until the field is added to Airtable
+    /*if (updateData.endCommit) {
       updateObject['EndCommit'] = updateData.endCommit;
-    }
+    }*/
     
     // Handle session completion - when status changes to Completed
     if (updateData.status === 'Completed' && currentSession.fields.Status !== 'Completed') {
@@ -785,6 +787,8 @@ async function updateSession(sessionId, updateData) {
         updateObject['EndDate'] = formatTime(new Date());
       }
       
+      // Temporarily disable EndCommit until the field is added to Airtable
+      /*
       // Ensure we have an end commit
       if (!updateObject['EndCommit'] && !currentSession.fields.EndCommit) {
         try {
@@ -798,6 +802,7 @@ async function updateSession(sessionId, updateData) {
           console.log(`Error getting latest commit: ${error.message}`);
         }
       }
+      */
       
       // Check if we should mark the module as completed
       const focusModuleId = currentSession.fields.Focus?.[0];
