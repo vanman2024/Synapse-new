@@ -16,13 +16,37 @@ const base = airtable.base(process.env.DEV_AIRTABLE_BASE_ID);
 
 // Get sessions for the last 7 days
 async function getRecentSessions() {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const dateString = sevenDaysAgo.toISOString().split('T')[0];
-  
-  return await base('Sessions').select({
-    filterByFormula: `IS_AFTER({Date}, '${dateString}')`
-  }).all();
+  // Get all sessions for now since we're having issues with the date filter
+  // We'll filter them in memory instead
+  try {
+    console.log('Fetching all sessions...');
+    const allSessions = await base('Sessions').select().all();
+    console.log(`Found ${allSessions.length} total sessions`);
+    
+    // Get sessions from the last 7 days
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    // Manual filtering
+    const recentSessions = allSessions.filter(session => {
+      // If there's no Date field, include it anyway
+      if (!session.fields.Date) return true;
+      
+      try {
+        const sessionDate = new Date(session.fields.Date);
+        return sessionDate >= sevenDaysAgo;
+      } catch (e) {
+        // If date parsing fails, include the session
+        return true;
+      }
+    });
+    
+    console.log(`Filtered to ${recentSessions.length} recent sessions`);
+    return recentSessions;
+  } catch (error) {
+    console.error('Error fetching sessions:', error);
+    return [];
+  }
 }
 
 // Extract feature name from branch
@@ -119,8 +143,33 @@ async function maintainSessions() {
         if (!foundModule) {
           // Check if branch name mentions a component we can map to a module
           const branchLower = branch.toLowerCase();
-          if (branchLower.includes('content')) {
-            const contentModules = ['Implement Content Repository', 'Implement Content Service with AI integration', 'Implement Content Controller for API endpoints'];
+          
+          // More specific pattern matching first
+          if (branchLower.includes('content-controller')) {
+            // Controller-specific module
+            const moduleName = 'Implement Content Controller for API endpoints';
+            if (moduleMap.has(moduleName)) {
+              foundModule = moduleMap.get(moduleName);
+              console.log(`Mapped branch "${branch}" to specific module "${moduleName}"`);
+            }
+          } else if (branchLower.includes('content-service')) {
+            // Service-specific module
+            const moduleName = 'Implement Content Service with AI integration';
+            if (moduleMap.has(moduleName)) {
+              foundModule = moduleMap.get(moduleName);
+              console.log(`Mapped branch "${branch}" to specific module "${moduleName}"`);
+            }
+          } else if (branchLower.includes('content-repository')) {
+            // Repository-specific module
+            const moduleName = 'Implement Content Repository for content entities';
+            if (moduleMap.has(moduleName)) {
+              foundModule = moduleMap.get(moduleName);
+              console.log(`Mapped branch "${branch}" to specific module "${moduleName}"`);
+            }
+          } 
+          // General content mapping as fallback
+          else if (branchLower.includes('content')) {
+            const contentModules = ['Implement Content Controller for API endpoints', 'Implement Content Service with AI integration', 'Implement Content Repository for content entities'];
             for (const moduleName of contentModules) {
               if (moduleMap.has(moduleName)) {
                 foundModule = moduleMap.get(moduleName);

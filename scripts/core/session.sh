@@ -218,6 +218,9 @@ EOF
     log_session_to_airtable "$SESSION_FILE"
   fi
   
+  # Automatically run maintenance to ensure proper linking
+  "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" maintain-sessions > /dev/null 2>&1
+  
   echo_color "$GREEN" "Session ended and properly archived"
   
   return 0
