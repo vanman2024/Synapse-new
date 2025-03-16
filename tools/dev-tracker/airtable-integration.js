@@ -593,6 +593,153 @@ async function findModuleByName(moduleName) {
   }
 }
 
+/**
+ * Register or update a component in the ComponentRegistry
+ * @param {Object} componentData - Component data to register
+ * @param {string} componentData.name - Component name
+ * @param {string} componentData.filePath - Component file path
+ * @param {string} componentData.componentType - Type of component (Controller, Service, etc.)
+ * @param {string} [componentData.purpose] - Component purpose description
+ * @param {string} [componentData.moduleName] - Name of the module this component belongs to
+ * @param {string} [componentData.sessionId] - Current session ID to link this component to
+ * @returns {Promise<Object>} - The created or updated component record
+ */
+async function registerComponent(componentData) {
+  try {
+    console.log(`Registering/updating component "${componentData.name}" in Airtable...`);
+    
+    // First, check if component already exists with this name or file path
+    let existingComponent = null;
+    
+    try {
+      // Look for existing component by file path (most accurate way to identify a component)
+      const components = await airtableClient.findRecords('ComponentRegistry', 
+        `{FilePath} = "${componentData.filePath}"`);
+      
+      if (components.length > 0) {
+        existingComponent = components[0];
+        console.log(`Found existing component with same file path: ${componentData.filePath}`);
+      } else {
+        // Try to find by name if no match by path
+        const nameComponents = await airtableClient.findRecords('ComponentRegistry',
+          `{Name} = "${componentData.name}"`);
+          
+        if (nameComponents.length > 0) {
+          existingComponent = nameComponents[0];
+          console.log(`Found existing component with same name: ${componentData.name}`);
+        }
+      }
+    } catch (error) {
+      console.log(`Error checking for existing components: ${error.message}`);
+    }
+    
+    // Prepare component record data
+    const componentRecord = {
+      'Name': componentData.name,
+      'FilePath': componentData.filePath,
+      'ComponentType': componentData.componentType
+    };
+    
+    // Add purpose if provided
+    if (componentData.purpose) {
+      componentRecord['Purpose'] = componentData.purpose;
+    }
+    
+    // Look up module record if module name is provided
+    if (componentData.moduleName) {
+      try {
+        const moduleRecord = await findModuleByName(componentData.moduleName);
+        
+        if (moduleRecord) {
+          // Set Module link - must be an array of IDs
+          componentRecord['Module'] = [moduleRecord.id];
+          console.log(`Linked component to module: ${moduleRecord.fields['Module Name']}`);
+          
+          // Also look up phase to give more context in logs
+          try {
+            if (moduleRecord.fields.Phase && moduleRecord.fields.Phase.length > 0) {
+              const phaseId = moduleRecord.fields.Phase[0];
+              const phase = await airtableClient.getTable('Phases').find(phaseId);
+              if (phase) {
+                console.log(`Module belongs to phase: ${phase.fields['Phase Name'] || 'Unknown'}`);
+              }
+            }
+          } catch (error) {
+            console.log(`Could not fetch phase info: ${error.message}`);
+          }
+        } else {
+          console.log(`Module "${componentData.moduleName}" not found, component will not be linked to a module`);
+        }
+      } catch (error) {
+        console.log(`Error linking component to module: ${error.message}`);
+      }
+    }
+    
+    // If there's a session ID, link the component to the session
+    if (componentData.sessionId) {
+      try {
+        // Get current session
+        const session = await getSession(componentData.sessionId);
+        
+        if (session) {
+          console.log(`Linking component to session ID: ${componentData.sessionId}`);
+          
+          // If component already exists, we need to update the session to link to it
+          if (existingComponent) {
+            // Get existing components linked to the session
+            const existingComponents = session.fields.Components || [];
+            
+            // Add the component ID if it's not already linked
+            if (!existingComponents.includes(existingComponent.id)) {
+              await airtableClient.updateRecord('Sessions', componentData.sessionId, {
+                'Components': [...existingComponents, existingComponent.id]
+              });
+              console.log(`Added component to session's component list`);
+            } else {
+              console.log(`Component already linked to session`);
+            }
+          }
+        }
+      } catch (error) {
+        console.log(`Error linking component to session: ${error.message}`);
+      }
+    }
+    
+    let result;
+    
+    // Update existing component or create new one
+    if (existingComponent) {
+      console.log(`Updating existing component: ${existingComponent.id}`);
+      result = await airtableClient.updateRecord('ComponentRegistry', existingComponent.id, componentRecord);
+    } else {
+      console.log(`Creating new component`);
+      result = await airtableClient.createRecord('ComponentRegistry', componentRecord);
+      
+      // If we created a new component and have a session ID, link it to the session
+      if (result && componentData.sessionId) {
+        try {
+          const session = await getSession(componentData.sessionId);
+          
+          if (session) {
+            const existingComponents = session.fields.Components || [];
+            await airtableClient.updateRecord('Sessions', componentData.sessionId, {
+              'Components': [...existingComponents, result.id]
+            });
+            console.log(`Linked newly created component to session`);
+          }
+        } catch (error) {
+          console.log(`Error linking new component to session: ${error.message}`);
+        }
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error(`Error registering component in Airtable:`, error);
+    return null;
+  }
+}
+
 module.exports = {
   updateModuleStatus,
   logSession,
@@ -602,5 +749,6 @@ module.exports = {
   updateSession,
   getSession,
   getRecentSessions,
-  findModuleByName
+  findModuleByName,
+  registerComponent
 };

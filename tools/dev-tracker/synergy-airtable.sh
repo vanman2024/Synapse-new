@@ -364,48 +364,41 @@ case "$COMMAND" in
       exit 1
     fi
     
-    # Call Node.js script to register component
+    # Get the current active session ID if exists
+    SESSION_ID=""
+    if [ -f "/tmp/synergy/session_id" ]; then
+      SESSION_ID=$(cat "/tmp/synergy/session_id")
+    fi
+    
+    # Call Node.js script to register or update component using the improved function
     $NODE_BIN -e "
-      const airtable = require('$SCRIPT_DIR/airtable-client');
       const airtableIntegration = require('$SCRIPT_DIR/airtable-integration');
-      const component = {
-        Name: '$NAME',
-        FilePath: '$FILE_PATH',
-        ComponentType: '$COMPONENT_TYPE',
-        Purpose: '$PURPOSE'
+      
+      // Create component data object
+      const componentData = {
+        name: '$NAME',
+        filePath: '$FILE_PATH',
+        componentType: '$COMPONENT_TYPE',
+        purpose: '$PURPOSE',
+        moduleName: '$MODULE',
+        sessionId: '$SESSION_ID'
       };
       
-      // Add module link if provided
-      if ('$MODULE') {
-        // Find the module record ID
-        airtableIntegration.findModuleByName('$MODULE')
-          .then(moduleRecord => {
-            if (moduleRecord) {
-              component.Module = [moduleRecord.id];
-              return airtable.createRecord('ComponentRegistry', component);
-            } else {
-              console.error('Module not found: $MODULE');
-              process.exit(1);
-            }
-          })
-          .then(result => {
-            process.exit(result ? 0 : 1);
-          })
-          .catch(error => {
-            console.error(error);
+      // Register or update the component
+      airtableIntegration.registerComponent(componentData)
+        .then(result => {
+          if (result) {
+            console.log('Component successfully registered or updated');
+            process.exit(0);
+          } else {
+            console.error('Failed to register/update component');
             process.exit(1);
-          });
-      } else {
-        // Create component without module link
-        airtable.createRecord('ComponentRegistry', component)
-          .then(result => {
-            process.exit(result ? 0 : 1);
-          })
-          .catch(error => {
-            console.error(error);
-            process.exit(1);
-          });
-      }
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          process.exit(1);
+        });
     "
     
     if [ $? -eq 0 ]; then
