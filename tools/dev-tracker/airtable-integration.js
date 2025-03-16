@@ -192,14 +192,14 @@ async function logSession(session) {
       const startTime = typeof session.startTime === 'string' 
         ? session.startTime 
         : formatTime(session.startTime);
-      sessionRecord['StartTime'] = startTime;
+      sessionRecord['StartDate'] = startTime;
     }
     
     if (session.endTime) {
       const endTime = typeof session.endTime === 'string'
         ? session.endTime
         : formatTime(session.endTime);
-      sessionRecord['EndTime'] = endTime;
+      sessionRecord['EndDate'] = endTime;
     }
     
     // Add Git commit hashes
@@ -757,14 +757,14 @@ async function updateSession(sessionId, updateData) {
       const startTime = typeof updateData.startTime === 'string'
         ? updateData.startTime
         : formatTime(updateData.startTime);
-      updateObject['StartTime'] = startTime;
+      updateObject['StartDate'] = startTime;
     }
     
     if (updateData.endTime) {
       const endTime = typeof updateData.endTime === 'string'
         ? updateData.endTime
         : formatTime(updateData.endTime);
-      updateObject['EndTime'] = endTime;
+      updateObject['EndDate'] = endTime;
     }
     
     // Handle commit hashes
@@ -781,8 +781,8 @@ async function updateSession(sessionId, updateData) {
       console.log('Session is being completed - checking if we should update module status');
       
       // Set end time if not already set
-      if (!updateObject['EndTime']) {
-        updateObject['EndTime'] = formatTime(new Date());
+      if (!updateObject['EndDate']) {
+        updateObject['EndDate'] = formatTime(new Date());
       }
       
       // Ensure we have an end commit
