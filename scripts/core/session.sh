@@ -70,9 +70,17 @@ start_session() {
   # Record first activity
   log_activity "Session started with focus on $FOCUS_MODULE"
   
-  # Create the session record in Airtable
+  # Create the session record in Airtable with simplified strings
   source "$REPO_DIR/scripts/integrations/airtable.sh"
-  "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" create-session "$CURRENT_DATE" "$CURRENT_BRANCH" "$FOCUS_MODULE" "Active" "$CURRENT_COMMIT" "" "Started development session focusing on $FOCUS_MODULE" "Working on $FOCUS_MODULE implementation"
+  SIMPLE_SUMMARY="Started development session"
+  SIMPLE_CONTEXT="Working on implementation"
+  
+  # Use a fixed module name if the dynamic one contains problematic characters
+  if [[ "$FOCUS_MODULE" == *"..."* || "$FOCUS_MODULE" == *"'"* || "$FOCUS_MODULE" == *'"'* ]]; then
+    "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" create-session "$CURRENT_DATE" "$CURRENT_BRANCH" "Development Tasks" "Active" "$CURRENT_COMMIT" "" "$SIMPLE_SUMMARY" "$SIMPLE_CONTEXT"
+  else
+    "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" create-session "$CURRENT_DATE" "$CURRENT_BRANCH" "$FOCUS_MODULE" "Active" "$CURRENT_COMMIT" "" "$SIMPLE_SUMMARY" "$SIMPLE_CONTEXT"
+  fi
 
   echo_color "$GREEN" "Session started. Focus: $FOCUS_MODULE"
   
