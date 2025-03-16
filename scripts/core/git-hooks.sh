@@ -9,20 +9,21 @@ source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 setup_git_hooks() {
   HOOKS_DIR="$REPO_DIR/.git/hooks"
   
-  # Create pre-commit hook for auto-updating SESSION.md
+  # Create pre-commit hook for logging activity
   cat > "$HOOKS_DIR/pre-commit" << 'EOF'
 #!/bin/bash
 REPO_DIR=$(git rev-parse --show-toplevel)
-SESSION_FILE="$REPO_DIR/SESSION.md"
+TMP_DIR="/tmp/synergy"
 
 # Only proceed if session is active
-if [ -f "$SESSION_FILE" ] && grep -q "Status: Active" "$SESSION_FILE"; then
+if [ -f "$TMP_DIR/active_session" ]; then
   # Get commit information
   FILES_CHANGED=$(git diff --cached --name-only | wc -l)
   SUMMARY=$(git diff --cached --stat | tail -n 1)
   
-  # Add activity to session log
-  echo "#### $(date '+%H:%M') - Git: Commit with $FILES_CHANGED files" >> "$SESSION_FILE"
+  # Add activity to temp log
+  mkdir -p "$TMP_DIR"
+  echo "$(date '+%H:%M') - Git: Commit with $FILES_CHANGED files" >> "$TMP_DIR/activities.log"
 fi
 exit 0
 EOF
@@ -32,7 +33,7 @@ EOF
   cat > "$HOOKS_DIR/pre-push" << 'EOF'
 #!/bin/bash
 REPO_DIR=$(git rev-parse --show-toplevel)
-SESSION_FILE="$REPO_DIR/SESSION.md"
+TMP_DIR="/tmp/synergy"
 
 echo "Running pre-push verification..."
 
@@ -59,9 +60,11 @@ if grep -q "\"test\":" "$REPO_DIR/package.json"; then
   fi
 fi
 
-# Update session if active
-if [ -f "$SESSION_FILE" ] && grep -q "Status: Active" "$SESSION_FILE"; then
-  echo "#### $(date '+%H:%M') - Verified code quality for push" >> "$SESSION_FILE"
+# Add activity to log if session is active
+if [ -f "$TMP_DIR/active_session" ]; then
+  # Add activity to temp log
+  mkdir -p "$TMP_DIR"
+  echo "$(date '+%H:%M') - Verified code quality for push" >> "$TMP_DIR/activities.log"
 fi
 
 echo "✅ All checks passed! Pushing code..."

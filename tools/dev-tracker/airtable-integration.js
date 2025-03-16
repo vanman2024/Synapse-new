@@ -220,10 +220,140 @@ async function getPhaseModules(phaseNumber) {
   }
 }
 
+/**
+ * Update an existing session in Airtable
+ * @param {string} sessionId - The Airtable record ID of the session
+ * @param {Object} updateData - Data to update (status, endTime, summary, etc.)
+ * @returns {Promise<Object>} - Updated record
+ */
+async function updateSession(sessionId, updateData) {
+  try {
+    console.log(`Updating session ${sessionId} in Airtable...`);
+    
+    // Prepare update object
+    const updateObject = {};
+    
+    // Map standard fields directly
+    if (updateData.status) updateObject['Status'] = updateData.status;
+    if (updateData.endTime) updateObject['EndTime'] = updateData.endTime;
+    if (updateData.summary) updateObject['Summary'] = updateData.summary;
+    if (updateData.commits) updateObject['Commits'] = updateData.commits.join(', ');
+    
+    // If there's a module to link, look it up and create the link
+    if (updateData.module) {
+      try {
+        console.log(`Looking up module: "${updateData.module}"`);
+        
+        // Try exact match first
+        let moduleRecords = await airtableClient.findRecords('Modules', 
+          `{Module Name} = "${updateData.module}"`);
+          
+        // If no exact match, try partial match
+        if (moduleRecords.length === 0) {
+          // Create a more flexible search pattern
+          const moduleParts = updateData.module.split(' ');
+          // If module has multiple words, search for records containing the first two words
+          if (moduleParts.length > 1) {
+            const searchPattern = moduleParts.slice(0, 2).join(' ');
+            moduleRecords = await airtableClient.findRecords('Modules', 
+              `FIND("${searchPattern}", {Module Name}) > 0`);
+          }
+        }
+        
+        if (moduleRecords.length > 0) {
+          // Set linked record field for Focus - must be an array of IDs
+          updateObject['Focus'] = [moduleRecords[0].id];
+          console.log(`Linked session to module: ${moduleRecords[0].fields['Module Name']}`);
+        } else {
+          console.log(`No matching module found for "${updateData.module}"`);
+        }
+      } catch (error) {
+        console.log(`Could not link to module: ${error.message}`);
+      }
+    }
+    
+    // Update the record
+    const updatedRecord = await airtableClient.updateRecord('Sessions', sessionId, updateObject);
+    
+    console.log(`Session ${sessionId} updated successfully.`);
+    return updatedRecord;
+  } catch (error) {
+    console.error('Error updating session in Airtable:', error);
+    return null;
+  }
+}
+
+/**
+ * Get session information from Airtable
+ * @param {string} sessionId - The Airtable record ID of the session
+ * @returns {Promise<Object>} - Session data
+ */
+async function getSession(sessionId) {
+  try {
+    console.log(`Getting session ${sessionId} from Airtable...`);
+    
+    // Directly fetch the record by ID
+    const record = await airtableClient.getTable('Sessions').find(sessionId);
+    
+    console.log(`Retrieved session ${sessionId}`);
+    return record;
+  } catch (error) {
+    console.error('Error getting session from Airtable:', error);
+    return null;
+  }
+}
+
+/**
+ * Get recent sessions from Airtable
+ * @param {number} days - Number of days to look back (default: 7)
+ * @returns {Promise<Array>} - List of recent sessions
+ */
+async function getRecentSessions(days = 7) {
+  try {
+    console.log(`Getting sessions from the last ${days} days...`);
+    
+    // Calculate the date for filtering
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    const dateString = date.toISOString().split('T')[0];
+    
+    // Try to filter by date directly
+    try {
+      const sessions = await airtableClient.findRecords('Sessions', 
+        `IS_AFTER({Date}, '${dateString}')`);
+      return sessions;
+    } catch (error) {
+      // If the filter fails, fall back to getting all sessions and filtering in memory
+      console.log(`Date filtering failed, fetching all sessions: ${error.message}`);
+      const allSessions = await airtableClient.getAllRecords('Sessions');
+      
+      // Filter sessions in memory
+      return allSessions.filter(session => {
+        // If no Date field, include it for safety
+        if (!session.fields.Date) return true;
+        
+        try {
+          const sessionDate = new Date(session.fields.Date);
+          return sessionDate >= date;
+        } catch (e) {
+          // If date parsing fails, include the session
+          return true;
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error getting recent sessions from Airtable:', error);
+    return [];
+  }
+}
+
 module.exports = {
   updateModuleStatus,
   logSession,
   getModuleInfo,
   getCurrentPhase,
-  getPhaseModules
+  getPhaseModules,
+  updateSession,
+  getSession,
+  getRecentSessions
 };

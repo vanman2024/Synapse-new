@@ -44,8 +44,200 @@ case "$COMMAND" in
     fi
     ;;
     
-  # Log session
+  # Create a new session
+  create-session)
+    DATE="$1"
+    BRANCH="$2"
+    FOCUS="$3"
+    STATUS="$4"
+    START_TIME="$5"
+    END_TIME="$6"
+    SUMMARY="$7"
+    
+    if [ -z "$DATE" ] || [ -z "$BRANCH" ] || [ -z "$FOCUS" ] || [ -z "$STATUS" ] || [ -z "$START_TIME" ]; then
+      echo -e "${YELLOW}Usage: synergy-airtable.sh create-session <date> <branch> <focus> <status> <start_time> [<end_time>] [<summary>]${NC}"
+      exit 1
+    fi
+    
+    # Extract feature name from branch for better summaries
+    FEATURE_NAME=""
+    if [[ "$BRANCH" == feature/* ]]; then
+      FEATURE_NAME=$(echo "$BRANCH" | sed 's/feature\///')
+      # Convert dashes to spaces and capitalize words for readability
+      FEATURE_NAME=$(echo "$FEATURE_NAME" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')
+    fi
+    
+    # Generate a better summary if one wasn't provided
+    if [ -z "$SUMMARY" ]; then
+      if [ -n "$FEATURE_NAME" ]; then
+        SUMMARY="Started implementation of $FEATURE_NAME functionality"
+        
+        # Add module context if available
+        if [ -n "$FOCUS" ]; then
+          SUMMARY="$SUMMARY, working on $FOCUS"
+        fi
+      elif [ -n "$FOCUS" ]; then
+        SUMMARY="Started work on $FOCUS implementation"
+      fi
+    fi
+    
+    # Extract commits
+    COMMITS=$(git log --pretty=format:"%h %s" --since="1 hour ago" | head -5 | tr '\n' '|')
+    
+    # Call Node.js script to create session
+    $NODE_BIN -e "
+      const airtable = require('$SCRIPT_DIR/airtable-integration');
+      const session = {
+        date: '$DATE',
+        branch: '$BRANCH',
+        module: '$FOCUS',
+        status: '$STATUS',
+        startTime: '$START_TIME',
+        endTime: '$END_TIME',
+        summary: '$SUMMARY',
+        commits: '$COMMITS'.split('|').filter(c => c)
+      };
+      airtable.logSession(session)
+        .then(result => {
+          // Store the record ID for later updates
+          if (result && result.id) {
+            require('fs').writeFileSync('/tmp/synergy/session_id', result.id);
+          }
+          process.exit(result ? 0 : 1);
+        })
+        .catch(error => {
+          console.error(error);
+          process.exit(1);
+        });
+    "
+    
+    if [ $? -eq 0 ]; then
+      echo -e "${GREEN}Session created in Airtable.${NC}"
+    else
+      echo -e "${RED}Failed to create session in Airtable.${NC}"
+      exit 1
+    fi
+    ;;
+    
+  # Update an existing session
+  update-session)
+    STATUS="$1"
+    END_TIME="$2"
+    SUMMARY="$3"
+    FOCUS="$4"
+    
+    if [ -z "$STATUS" ]; then
+      echo -e "${YELLOW}Usage: synergy-airtable.sh update-session <status> [<end_time>] [<summary>] [<focus>]${NC}"
+      exit 1
+    fi
+    
+    # Get the session ID if available
+    SESSION_ID=""
+    if [ -f "/tmp/synergy/session_id" ]; then
+      SESSION_ID=$(cat "/tmp/synergy/session_id")
+    fi
+    
+    if [ -z "$SESSION_ID" ]; then
+      echo -e "${YELLOW}No active session ID found. Cannot update session.${NC}"
+      exit 1
+    fi
+    
+    # Extract commits
+    COMMITS=$(git log --pretty=format:"%h %s" --since="5 hours ago" | head -5 | tr '\n' '|')
+    
+    # Call Node.js script to update session
+    $NODE_BIN -e "
+      const airtable = require('$SCRIPT_DIR/airtable-integration');
+      const updateData = {
+        status: '$STATUS'
+      };
+      
+      if ('$END_TIME') updateData.endTime = '$END_TIME';
+      if ('$SUMMARY') updateData.summary = '$SUMMARY';
+      if ('$FOCUS') updateData.module = '$FOCUS';
+      if ('$COMMITS') updateData.commits = '$COMMITS'.split('|').filter(c => c);
+      
+      airtable.updateSession('$SESSION_ID', updateData)
+        .then(result => {
+          process.exit(result ? 0 : 1);
+        })
+        .catch(error => {
+          console.error(error);
+          process.exit(1);
+        });
+    "
+    
+    if [ $? -eq 0 ]; then
+      echo -e "${GREEN}Session updated in Airtable.${NC}"
+      # Remove the session ID file if the status is Completed
+      if [ "$STATUS" = "Completed" ]; then
+        rm -f "/tmp/synergy/session_id"
+      fi
+    else
+      echo -e "${RED}Failed to update session in Airtable.${NC}"
+      exit 1
+    fi
+    ;;
+  
+  # Get active session
+  get-active-session)
+    # Check if we have a session ID stored
+    if [ ! -f "/tmp/synergy/session_id" ]; then
+      echo -e "${YELLOW}No active session ID found.${NC}"
+      exit 1
+    fi
+    
+    SESSION_ID=$(cat "/tmp/synergy/session_id")
+    
+    # Call Node.js script to get session
+    $NODE_BIN -e "
+      const airtable = require('$SCRIPT_DIR/airtable-integration');
+      airtable.getSession('$SESSION_ID')
+        .then(session => {
+          if (session) {
+            console.log(JSON.stringify(session));
+            process.exit(0);
+          } else {
+            process.exit(1);
+          }
+        })
+        .catch(error => {
+          console.error(error);
+          process.exit(1);
+        });
+    "
+    ;;
+    
+  # Get recent sessions
+  get-recent-sessions)
+    # Call Node.js script to get recent sessions
+    $NODE_BIN -e "
+      const airtable = require('$SCRIPT_DIR/airtable-integration');
+      airtable.getRecentSessions()
+        .then(sessions => {
+          if (sessions && sessions.length > 0) {
+            // Display summary of the last 3 sessions
+            sessions.slice(0, 3).forEach(session => {
+              const fields = session.fields;
+              console.log(\`\${fields.Date || 'Unknown date'}: \${fields.Summary || 'No summary'} (\${fields.Status || 'Unknown status'})\`);
+            });
+            process.exit(0);
+          } else {
+            console.log('No recent sessions found');
+            process.exit(1);
+          }
+        })
+        .catch(error => {
+          console.error(error);
+          process.exit(1);
+        });
+    "
+    ;;
+    
+  # Legacy log-session command (for backward compatibility)
   log-session)
+    echo -e "${YELLOW}Warning: log-session is deprecated. Use create-session and update-session instead.${NC}"
+    
     SESSION_FILE="$1"
     MODULE="$2"
     
@@ -73,51 +265,8 @@ case "$COMMAND" in
       MODULE="$FOCUS"
     fi
     
-    # Extract feature name from branch for better summaries
-    FEATURE_NAME=""
-    if [[ "$BRANCH" == feature/* ]]; then
-      FEATURE_NAME=$(echo "$BRANCH" | sed 's/feature\///')
-      # Convert dashes to spaces and capitalize words for readability
-      FEATURE_NAME=$(echo "$FEATURE_NAME" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')
-    fi
-    
-    # Generate a better summary if one doesn't exist in the session file
-    GENERATED_SUMMARY=""
-    if [ -z "$SUMMARY" ]; then
-      if [ -n "$FEATURE_NAME" ]; then
-        GENERATED_SUMMARY="Implementation of $FEATURE_NAME functionality"
-        
-        # Add module context if available
-        if [ -n "$MODULE" ]; then
-          GENERATED_SUMMARY="$GENERATED_SUMMARY, working on $MODULE"
-        fi
-        
-        # Add commit context if available
-        if [ -n "$COMMITS" ]; then
-          COMMIT_TYPES=$(echo "$COMMITS" | grep -o -E "feat:|fix:|refactor:|docs:|test:" | sort | uniq | tr '\n' ' ')
-          if [ -n "$COMMIT_TYPES" ]; then
-            GENERATED_SUMMARY="$GENERATED_SUMMARY. Includes $COMMIT_TYPES changes."
-          fi
-        fi
-      elif [ -n "$MODULE" ]; then
-        GENERATED_SUMMARY="Work on $MODULE implementation"
-      fi
-    fi
-    
-    # Use Module from parameter or Focus if available
-    MODULE_JSON=""
-    if [ -n "$MODULE" ]; then
-      # We need to pass the module name and let the integration script find the ID
-      MODULE_JSON="module: '$MODULE',"
-      echo -e "${BLUE}Linking session to module: $MODULE${NC}"
-    fi
-    
-    # Set summary if we generated one
-    SUMMARY_JSON=""
-    if [ -n "$GENERATED_SUMMARY" ]; then
-      SUMMARY_JSON="summary: '$GENERATED_SUMMARY',"
-      echo -e "${BLUE}Generated summary: $GENERATED_SUMMARY${NC}"
-    fi
+    # Generate a better summary
+    GENERATED_SUMMARY="Development session on branch $BRANCH focusing on $MODULE"
     
     # Call Node.js script to log session
     $NODE_BIN -e "
@@ -125,13 +274,12 @@ case "$COMMAND" in
       const session = {
         date: '$DATE',
         branch: '$BRANCH',
-        focus: '$FOCUS',
+        module: '$MODULE',
         status: '$STATUS',
         startTime: '$START_TIME',
         endTime: '$END_TIME',
-        summary: '${GENERATED_SUMMARY:-$SUMMARY}',
-        commits: '$COMMITS'.split('|').filter(c => c),
-        $MODULE_JSON
+        summary: '$GENERATED_SUMMARY',
+        commits: '$COMMITS'.split('|').filter(c => c)
       };
       airtable.logSession(session)
         .then(result => {
@@ -248,7 +396,10 @@ case "$COMMAND" in
     echo -e "${YELLOW}Unknown command: $COMMAND${NC}"
     echo "Available commands:"
     echo "  update-module <module-name> <status> - Update module status"
-    echo "  log-session <session-file> - Log a session in Airtable"
+    echo "  create-session <date> <branch> <focus> <status> <start_time> - Create a new session"
+    echo "  update-session <status> [<end_time>] [<summary>] [<focus>] - Update an existing session"
+    echo "  get-active-session - Get information about the active session"
+    echo "  log-session <session-file> - (Legacy) Log a session from a file"
     echo "  get-phase - Get current phase information"
     echo "  get-module <module-name> - Get module information" 
     echo "  get-phase-modules <phase-number> - Get modules for a phase"

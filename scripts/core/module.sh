@@ -100,17 +100,26 @@ update_module() {
     return 1
   fi
   
-  # First, update the session file to reflect current focus
-  if [ "$STATUS" = "in-progress" ] && [ -f "$SESSION_FILE" ]; then
-    # Update focus in session file
-    update_session_field "Focus" "$MODULE"
-    sed -i "s/Current focus is on.*/Current focus is on $MODULE implementation./" "$SESSION_FILE"
+  # Log module activity
+  if [ "$STATUS" = "in-progress" ]; then
+    # Record activity
+    log_activity "Started work on module: $MODULE"
     
-    # Add to session log
-    log_to_session "Started work on module: $MODULE"
-  elif [ "$STATUS" = "complete" ] && [ -f "$SESSION_FILE" ]; then
-    # Add to session log
-    log_to_session "Completed module: $MODULE"
+    # Update active session marker if it exists
+    if [ -f "/tmp/synergy/active_session" ]; then
+      # Read current values, update module, keep the same time and branch
+      IFS=',' read -r BRANCH FOCUS_MODULE START_TIME <<< "$(cat /tmp/synergy/active_session")"
+      echo "$BRANCH,$MODULE,$START_TIME" > "/tmp/synergy/active_session"
+      
+      # Also update session in Airtable if we have a session ID
+      if [ -f "/tmp/synergy/session_id" ]; then
+        SESSION_ID=$(cat "/tmp/synergy/session_id")
+        "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Active" "" "Working on module: $MODULE" "$MODULE"
+      fi
+    fi
+  elif [ "$STATUS" = "complete" ]; then
+    # Record activity
+    log_activity "Completed module: $MODULE"
   fi
   
   # Update Airtable if integration is available

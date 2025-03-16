@@ -8,9 +8,11 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../../ && pwd)"
 
 # Define key files - single source of truth approach
 OVERVIEW_FILE="$REPO_DIR/docs/project/DEVELOPMENT_OVERVIEW.md"
-SESSION_FILE="$REPO_DIR/SESSION.md"
 COMPACT_DIR="$REPO_DIR/sessions/claude"
 SESSIONS_DIR="$REPO_DIR/sessions"
+
+# Airtable is now the primary source of truth for sessions
+# SESSION_FILE has been deprecated
 
 # Auto-commit settings
 AUTO_COMMIT_INTERVAL=300 # seconds (5 minutes)
@@ -47,11 +49,6 @@ extract_field() {
   grep "$1:" "$2" | cut -d':' -f2- | xargs
 }
 
-# Update a field in the session file (e.g., update_session_field "Status" "Completed")
-update_session_field() {
-  sed -i "s/- $1:.*$/- $1: $2/" "$SESSION_FILE"
-}
-
 # Check if a command exists and is executable
 command_exists() {
   command -v "$1" &> /dev/null
@@ -62,7 +59,17 @@ echo_color() {
   echo -e "${1}${2}${NC}"
 }
 
-# Log output to session file with timestamp
-log_to_session() {
-  echo "#### $(date '+%H:%M') - $1" >> "$SESSION_FILE"
+# Log activity to Airtable
+log_activity() {
+  local activity="$1"
+  local module="$2"
+  
+  # This is a placeholder for where we would directly log to Airtable
+  # We'll implement direct Airtable API calls in the future
+  # For now, we just display the activity
+  echo_color "$BLUE" "Activity: $activity"
+  
+  # Store in temporary log if needed for end_session
+  mkdir -p "/tmp/synergy"
+  echo "$(date '+%H:%M') - $activity" >> "/tmp/synergy/activities.log"
 }
