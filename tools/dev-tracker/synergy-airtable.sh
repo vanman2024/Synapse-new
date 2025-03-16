@@ -47,9 +47,10 @@ case "$COMMAND" in
   # Log session
   log-session)
     SESSION_FILE="$1"
+    MODULE="$2"
     
     if [ -z "$SESSION_FILE" ] || [ ! -f "$SESSION_FILE" ]; then
-      echo -e "${YELLOW}Usage: synergy-airtable.sh log-session <session-file>. No session file provided or not found.${NC}"
+      echo -e "${YELLOW}Usage: synergy-airtable.sh log-session <session-file> [module-name]. No session file provided or not found.${NC}"
       exit 1
     fi
     
@@ -67,6 +68,18 @@ case "$COMMAND" in
     # Extract commits
     COMMITS=$(git log --pretty=format:"%h %s" --since="5 hours ago" | head -5 | tr '\n' '|')
     
+    # If no MODULE is passed but we have FOCUS, use that
+    if [ -z "$MODULE" ] && [ -n "$FOCUS" ]; then
+      MODULE="$FOCUS"
+    fi
+    
+    # Use Module from parameter or Focus if available
+    MODULE_JSON=""
+    if [ -n "$MODULE" ]; then
+      MODULE_JSON="module: '$MODULE',"
+      echo -e "${BLUE}Linking session to module: $MODULE${NC}"
+    fi
+    
     # Call Node.js script to log session
     $NODE_BIN -e "
       const airtable = require('$SCRIPT_DIR/airtable-integration');
@@ -78,7 +91,8 @@ case "$COMMAND" in
         startTime: '$START_TIME',
         endTime: '$END_TIME',
         summary: '$SUMMARY',
-        commits: '$COMMITS'.split('|').filter(c => c)
+        commits: '$COMMITS'.split('|').filter(c => c),
+        $MODULE_JSON
       };
       airtable.logSession(session)
         .then(result => {

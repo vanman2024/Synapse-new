@@ -8,7 +8,7 @@ The Synergy workflow automates all aspects of development:
 - Session management
 - Git branch creation and management
 - Code verification and testing
-- Module tracking
+- Module tracking and progress
 - Documentation updates
 - Claude integration
 - CI/CD integration
@@ -24,7 +24,7 @@ To begin development:
 This single command:
 - Ensures you're on a feature branch
 - Creates a new development session
-- Updates MODULE_TRACKER.md and PROJECT_TRACKER.md
+- Updates the Development Overview document
 - Starts auto-commit in the background
 - Sets up git hooks for verification
 
@@ -58,11 +58,20 @@ This single command:
 ./synergy.sh pr "Feature title"
 ```
 
-### Module Tracking
+### GitHub Projects Integration
 
 ```bash
-# Mark a module as completed
+# Mark a module as completed in GitHub Projects
 ./synergy.sh update-module "Module Name" complete
+
+# Mark a module as in-progress (current focus) in GitHub Projects
+./synergy.sh update-module "Module Name" in-progress
+
+# Reset a module to planned status in GitHub Projects
+./synergy.sh update-module "Module Name" planned
+
+# NOTE: Requires GitHub CLI to be installed
+# If GitHub CLI is not available, falls back to local overview updates
 ```
 
 ### Claude Integration
@@ -177,25 +186,152 @@ The system includes automated git hooks:
    - Confirms all tests pass
    - Prevents pushing broken code
 
-## Single Source of Truth
+## Integration with Airtable for Development Tracking
 
-The system maintains these core tracking files:
+The system now uses Airtable as the primary tracking system for project progress:
 
-- **SESSION.md** - Current development session
-- **docs/project/MODULE_TRACKER.md** - Module completion status
-- **docs/project/PROJECT_TRACKER.md** - Overall project status
+- **SESSION.md** - Tracks the current development session (local file)
+- **Airtable Base** - Primary source of truth for module status and progress
+- **docs/project/DEVELOPMENT_OVERVIEW.md** - Reference document for project structure and phases
 
-These files are automatically updated to remain in sync.
+### Airtable Integration Overview
+
+The Airtable integration provides:
+1. **Phases Table** - Tracks development phases with number, name, and status
+2. **Modules Table** - Tracks modules with links to phases and status (Planned, In Progress, Completed)
+3. **Sessions Table** - Logs development sessions with links to modules and summaries
+
+All session logs and module status updates are automatically synchronized with Airtable using the following workflow:
+- When a module status is updated, Airtable is updated automatically
+- When a session ends, it's logged in Airtable with links to relevant modules
+- Module focus is determined from git commit messages and session focus
+
+### Setting Up Airtable Integration
+
+The integration requires an Airtable base with the appropriate tables. To set it up:
+
+```bash
+# Set up Airtable for development tracking
+./synergy.sh airtable-setup
+```
+
+This command:
+1. Creates the required tables in Airtable
+2. Imports phase and module data from DEVELOPMENT_OVERVIEW.md
+3. Establishes relationships between tables
+4. Configures fields for proper display
+
+To use the integration, you need to create a `.env` file with your Airtable credentials:
+
+```
+DEV_AIRTABLE_PAT=pat_your_personal_access_token
+DEV_AIRTABLE_BASE_ID=app_your_base_id
+```
+
+### Using Airtable Integration
+
+Once set up, the integration works automatically with the existing synergy.sh commands:
+
+```bash
+# Update module status - now updates Airtable
+./synergy.sh update-module "Module Name" complete
+
+# End session - now logs to Airtable
+./synergy.sh end
+
+# Other commands work the same way with Airtable integration
+```
+
+### Airtable Data Structure
+
+The Airtable base contains three main tables with the following structure:
+
+1. **Phases Table**
+   - Phase Number: Number for ordering
+   - Phase Name: Primary field for display in links
+   - Description: Full description from DEVELOPMENT_OVERVIEW.md
+   - Status: Current, Previous, or Upcoming
+
+2. **Modules Table**
+   - Module Name: Primary field for display
+   - Phase: Linked record to Phases table
+   - Status: Completed, In Progress, or Planned
+
+3. **Sessions Table**
+   - Branch: Git branch for the session
+   - Status: Active or Completed
+   - Focus: Linked record to Modules table
+   - Summary: Automatic summary of session activities
+   - Commits: List of recent commits
+   - Notes: Extracted from SESSION.md
+
+All these tables are kept in sync automatically by the synergy.sh script.
+
+### GitHub Projects (Legacy)
+
+While GitHub Projects integration is included in the script, the current workflow uses Airtable as the primary tracking system. GitHub Projects may be used in the future or alongside Airtable, but configuration is not required for the main workflow.
+
+## Modular Architecture
+
+The Synergy system has been refactored into a modular architecture for better maintainability:
+
+```
+/scripts/
+  /core/
+    config.sh      # Central configuration and helper functions
+    session.sh     # Session management functions
+    module.sh      # Module tracking functions
+    git-hooks.sh   # Git hook setup and automation
+  /integrations/
+    airtable.sh    # Airtable integration (primary tracking)
+    github.sh      # GitHub Projects integration (legacy)
+    claude.sh      # Claude AI integration
+```
+
+This modular approach provides the following advantages:
+- Modules are loaded on-demand to improve performance
+- Each module focuses on a specific functionality area
+- Easier to maintain and extend with new features
+- Clear separation between core functionality and integrations
 
 ## Benefits
 
 This streamlined workflow:
-- Eliminates manual documentation updates
+- Uses a single source of truth for project tracking
+- Eliminates manual documentation updates and synchronization
 - Ensures code quality with automated verification
 - Maintains consistent branch structure
 - Creates a complete development history
 - Integrates with Claude AI seamlessly
 - Provides multi-layer quality assurance
 - Automates deployment to staging environments
+
+## Development Overview Structure
+
+The Development Overview document follows this structure:
+
+```markdown
+# Synapse Development Roadmap
+
+## Current State
+[Description of the current application state]
+
+## Phase 1: Foundation & Verification (Previous)
+- [x] Task 1 (completed)
+- [x] Task 2 (completed)
+
+## Phase 2: Content Generation Enhancement (Current)
+- [x] Task 1 (completed)
+- [ ] Task 2 (in progress)
+- [ ] Task 3 (planned)
+
+## Phase 3: User Management & Security
+- [ ] Task 1 (planned)
+- [ ] Task 2 (planned)
+
+## Immediate Next Steps
+1. First priority task
+2. Second priority task
+```
 
 Start using it today with `./synergy.sh start`!

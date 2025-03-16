@@ -71,8 +71,8 @@ Synapse is an API service that:
 - [ ] Develop A/B testing for content variations
 
 ## Immediate Next Steps
-1. Implement Improve and formalize OpenAI prompt templates functionality
+1. Implement Development Tasks functionality
 2. Create supporting components
-3. Complete unit tests for Improve and formalize OpenAI prompt templates
+3. Complete unit tests for Development Tasks
 4. Update related documentation
 5. Integrate with existing modules
