@@ -6,7 +6,8 @@
 # Get the repository root directory
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SYNERGY_SCRIPT="$REPO_DIR/synergy.sh"
-SESSION_FILE="$REPO_DIR/SESSION.md"
+# Check for active session
+TMP_SESSION_FILE="/tmp/synergy/active_session"
 
 # Check current branch
 CURRENT_BRANCH=$(git branch --show-current)
@@ -26,7 +27,7 @@ if [ "$CURRENT_BRANCH" = "master" ] || [ "$CURRENT_BRANCH" = "main" ]; then
   "$SYNERGY_SCRIPT" feature "$FEATURE_NAME"
   
   # Start the session if not already started
-  if [ ! -f "$SESSION_FILE" ] || ! grep -q "Status: Active" "$SESSION_FILE"; then
+  if [ ! -f "$TMP_SESSION_FILE" ]; then
     echo "Starting development session..."
     "$SYNERGY_SCRIPT" start
   fi
@@ -34,7 +35,7 @@ else
   echo "✅ Currently on feature branch: $CURRENT_BRANCH"
   
   # Make sure we have an active session
-  if [ ! -f "$SESSION_FILE" ] || ! grep -q "Status: Active" "$SESSION_FILE"; then
+  if [ ! -f "$TMP_SESSION_FILE" ]; then
     echo "Starting development session..."
     "$SYNERGY_SCRIPT" start
   else
@@ -49,7 +50,7 @@ fi
 echo ""
 echo "🚀 Ready for development! The system will:"
 echo "   - Automatically verify code with tests before commits"
-echo "   - Automatically track development in SESSION.md"
+echo "   - Automatically track development in Airtable"
 echo "   - Automatically suggest module completion and PR creation"
 echo ""
 echo "Just code - the hooks will handle verification and tracking!"

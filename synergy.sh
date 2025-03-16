@@ -66,7 +66,7 @@ show_help() {
   echo "  airtable-maintain - Improve session descriptions and module links in Airtable"
   echo "                  (Runs maintenance on recent sessions to ensure proper linking)"
   echo ""
-  echo "Most operations automatically update SESSION.md and integrate with git."
+  echo "Most operations automatically update Airtable and integrate with git."
   echo "Documentation is kept in sync with development progress automatically."
   echo ""
 }

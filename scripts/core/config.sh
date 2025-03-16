@@ -8,11 +8,9 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../../ && pwd)"
 
 # Define key files - single source of truth approach
 OVERVIEW_FILE="$REPO_DIR/docs/project/DEVELOPMENT_OVERVIEW.md"
-COMPACT_DIR="$REPO_DIR/sessions/claude"
-SESSIONS_DIR="$REPO_DIR/sessions"
 
 # Airtable is now the primary source of truth for sessions
-# SESSION_FILE has been deprecated
+# All temporary state is stored in /tmp/synergy/
 
 # Auto-commit settings
 AUTO_COMMIT_INTERVAL=300 # seconds (5 minutes)
@@ -35,16 +33,13 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # Ensure critical directories exist
-mkdir -p "$SESSIONS_DIR"
-mkdir -p "$COMPACT_DIR"
-mkdir -p "$COMPACT_DIR/processed"
-mkdir -p "$COMPACT_DIR/compact-watch"
-mkdir -p "$COMPACT_DIR/debug"
-mkdir -p "$COMPACT_DIR/archives"
+mkdir -p "/tmp/synergy"
+mkdir -p "/tmp/synergy/logs"
+mkdir -p "/tmp/synergy/debug"
 
 # Helper functions for common operations
 
-# Extract a field from a file (e.g., extract_field "Focus" "$SESSION_FILE")
+# Extract a field from a file (e.g., extract_field "Focus" "$OVERVIEW_FILE")
 extract_field() {
   grep "$1:" "$2" | cut -d':' -f2- | xargs
 }

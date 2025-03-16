@@ -83,38 +83,10 @@ start_session() {
   return 0
 }
 
-# Archive the current session file
+# Archive current session info to Airtable
+# This function is now a no-op since Airtable handles all archiving
 archive_session() {
-  if [ ! -f "$SESSION_FILE" ]; then
-    return 0
-  fi
-  
-  # Create archive directory if it doesn't exist
-  mkdir -p "$SESSIONS_DIR"
-  
-  # Create daily archive file name
-  ARCHIVE_DATE=$(date '+%Y%m%d')
-  ARCHIVE_FILE="$SESSIONS_DIR/session-$ARCHIVE_DATE.md"
-  CURRENT_TIME=$(date '+%H:%M:%S')
-  
-  # Check if the session is active
-  if grep -q "Status: Active" "$SESSION_FILE"; then
-    # Add a note that this session wasn't properly closed
-    echo -e "\n### Note: This session was not properly closed before archiving\n" >> "$SESSION_FILE"
-  fi
-  
-  # If daily file exists, append with separator
-  if [ -f "$ARCHIVE_FILE" ]; then
-    echo -e "\n\n---\n\n## Session at $CURRENT_TIME\n" >> "$ARCHIVE_FILE"
-    cat "$SESSION_FILE" >> "$ARCHIVE_FILE"
-  else
-    # Create new daily file with header
-    echo "# Synapse Development Sessions - $(date '+%B %d, %Y')" > "$ARCHIVE_FILE"
-    echo -e "\n## Session at $CURRENT_TIME\n" >> "$ARCHIVE_FILE"
-    cat "$SESSION_FILE" >> "$ARCHIVE_FILE"
-  fi
-  
-  echo_color "$YELLOW" "Session archived to $ARCHIVE_FILE"
+  # Nothing to do - end_session handles this via Airtable updates
   return 0
 }
 

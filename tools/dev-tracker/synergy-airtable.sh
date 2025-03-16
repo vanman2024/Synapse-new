@@ -234,69 +234,12 @@ case "$COMMAND" in
     "
     ;;
     
-  # Legacy log-session command (for backward compatibility)
+  # Legacy log-session command (completely removed, but keeping command for backward compatibility)
   log-session)
-    echo -e "${YELLOW}Warning: log-session is deprecated. Use create-session and update-session instead.${NC}"
-    
-    SESSION_FILE="$1"
-    MODULE="$2"
-    
-    if [ -z "$SESSION_FILE" ] || [ ! -f "$SESSION_FILE" ]; then
-      echo -e "${YELLOW}Usage: synergy-airtable.sh log-session <session-file> [module-name]. No session file provided or not found.${NC}"
-      exit 1
-    fi
-    
-    # Extract session data
-    DATE=$(date '+%Y-%m-%d')
-    BRANCH=$(grep "Branch:" "$SESSION_FILE" | cut -d':' -f2- | xargs)
-    FOCUS=$(grep "Focus:" "$SESSION_FILE" | cut -d':' -f2- | xargs)
-    STATUS=$(grep "Status:" "$SESSION_FILE" | cut -d':' -f2- | xargs)
-    START_TIME=$(grep "Started:" "$SESSION_FILE" | cut -d':' -f2- | xargs)
-    END_TIME=$(grep "Ended:" "$SESSION_FILE" | cut -d':' -f2- | xargs || echo "")
-    
-    # Extract summary
-    SUMMARY=$(sed -n '/^### Session Summary$/,/^####/p' "$SESSION_FILE" | grep -v "^###" | grep -v "^####" | tr '\n' ' ')
-    
-    # Extract commits
-    COMMITS=$(git log --pretty=format:"%h %s" --since="5 hours ago" | head -5 | tr '\n' '|')
-    
-    # If no MODULE is passed but we have FOCUS, use that
-    if [ -z "$MODULE" ] && [ -n "$FOCUS" ]; then
-      MODULE="$FOCUS"
-    fi
-    
-    # Generate a better summary
-    GENERATED_SUMMARY="Development session on branch $BRANCH focusing on $MODULE"
-    
-    # Call Node.js script to log session
-    $NODE_BIN -e "
-      const airtable = require('$SCRIPT_DIR/airtable-integration');
-      const session = {
-        date: '$DATE',
-        branch: '$BRANCH',
-        module: '$MODULE',
-        status: '$STATUS',
-        startTime: '$START_TIME',
-        endTime: '$END_TIME',
-        summary: '$GENERATED_SUMMARY',
-        commits: '$COMMITS'.split('|').filter(c => c)
-      };
-      airtable.logSession(session)
-        .then(result => {
-          process.exit(result ? 0 : 1);
-        })
-        .catch(error => {
-          console.error(error);
-          process.exit(1);
-        });
-    "
-    
-    if [ $? -eq 0 ]; then
-      echo -e "${GREEN}Session logged in Airtable.${NC}"
-    else
-      echo -e "${RED}Failed to log session in Airtable.${NC}"
-      exit 1
-    fi
+    echo -e "${RED}Error: The log-session command has been removed.${NC}"
+    echo -e "${YELLOW}Use create-session and update-session instead.${NC}"
+    echo -e "${YELLOW}Example: synergy-airtable.sh create-session \"$(date '+%Y-%m-%d')\" \"$(git branch --show-current)\" \"Your Focus\" \"Active\" \"$(date '+%H:%M')\"${NC}"
+    exit 1
     ;;
     
   # Get current phase

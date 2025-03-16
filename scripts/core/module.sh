@@ -163,12 +163,18 @@ feature() {
   git checkout -b "feature/$FEATURE_NAME"
   
   # Update session if active
-  if [ -f "$SESSION_FILE" ] && grep -q "Status: Active" "$SESSION_FILE"; then
-    # Update branch info
-    update_session_field "Branch" "feature/$FEATURE_NAME"
+  if [ -f "/tmp/synergy/active_session" ]; then
+    # Read current values, update branch, keep the same module and time
+    IFS=',' read -r OLD_BRANCH FOCUS_MODULE START_TIME <<< "$(cat "/tmp/synergy/active_session")"
+    echo "feature/$FEATURE_NAME,$FOCUS_MODULE,$START_TIME" > "/tmp/synergy/active_session"
     
-    # Add activity
-    log_to_session "Started feature: $FEATURE_NAME"
+    # Also update session in Airtable if we have a session ID
+    if [ -f "/tmp/synergy/session_id" ]; then
+      "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Active" "" "Started feature: $FEATURE_NAME" "$FOCUS_MODULE"
+    fi
+    
+    # Log activity
+    log_activity "Started feature: $FEATURE_NAME"
   fi
   
   echo_color "$GREEN" "Created and switched to branch: feature/$FEATURE_NAME"
@@ -231,9 +237,9 @@ smart_commit() {
   # Perform the commit
   git commit -m "$MESSAGE"
   
-  # Update session if active
-  if [ -f "$SESSION_FILE" ] && grep -q "Status: Active" "$SESSION_FILE"; then
-    log_to_session "Commit: $MESSAGE"
+  # Update activity log if there's an active session
+  if [ -f "/tmp/synergy/active_session" ]; then
+    log_activity "Commit: $MESSAGE"
   fi
   
   echo_color "$GREEN" "Committed with message: $MESSAGE"

@@ -35,9 +35,12 @@ start_claude() {
   echo "" >> "$CONTEXT_FILE"
   
   # Add current session details if active
-  if [ -f "$SESSION_FILE" ]; then
+  if [ -f "/tmp/synergy/active_session" ]; then
     echo "## Current Session" >> "$CONTEXT_FILE"
-    grep -A 15 "Current Focus" "$SESSION_FILE" >> "$CONTEXT_FILE"
+    IFS=',' read -r BRANCH FOCUS_MODULE START_TIME <<< "$(cat "/tmp/synergy/active_session")"
+    echo "Current Branch: $BRANCH" >> "$CONTEXT_FILE"
+    echo "Current Focus: $FOCUS_MODULE" >> "$CONTEXT_FILE"
+    echo "Started at: $START_TIME" >> "$CONTEXT_FILE"
   fi
   
   # Start Claude with the context
@@ -52,6 +55,7 @@ start_claude() {
 # Save Claude compact summary
 save_compact() {
   COMPACT_DATE=$(date '+%Y%m%d')
+  COMPACT_DIR="/tmp/synergy/claude-compacts"
   COMPACT_FILE="$COMPACT_DIR/compact-$COMPACT_DATE.md"
   
   # Ensure directory exists
@@ -93,9 +97,9 @@ save_compact() {
   
   echo_color "$GREEN" "Compact summary saved to: $COMPACT_FILE"
   
-  # Update session if active
-  if [ -f "$SESSION_FILE" ] && grep -q "Status: Active" "$SESSION_FILE"; then
-    log_to_session "Saved Claude compact summary"
+  # Log activity if there's an active session
+  if [ -f "/tmp/synergy/active_session" ]; then
+    log_activity "Saved Claude compact summary"
   fi
   
   return 0
@@ -103,8 +107,9 @@ save_compact() {
 
 # Start compact watcher in background
 start_compact_watch() {
+  COMPACT_DIR="/tmp/synergy/claude-compacts"
   WATCH_DIR="$COMPACT_DIR/compact-watch"
-  WATCH_PID_FILE="/tmp/compact-watch.pid"
+  WATCH_PID_FILE="/tmp/synergy/compact-watch.pid"
   
   # Check if already running
   if [ -f "$WATCH_PID_FILE" ] && ps -p $(cat "$WATCH_PID_FILE") > /dev/null; then
@@ -175,7 +180,7 @@ start_compact_watch() {
 
 # Stop compact watcher
 stop_compact_watch() {
-  WATCH_PID_FILE="/tmp/compact-watch.pid"
+  WATCH_PID_FILE="/tmp/synergy/compact-watch.pid"
   
   if [ -f "$WATCH_PID_FILE" ]; then
     PID=$(cat "$WATCH_PID_FILE")

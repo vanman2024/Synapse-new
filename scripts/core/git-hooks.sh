@@ -93,9 +93,10 @@ start_auto_commit() {
         # Get brief summary of changes
         FILES_CHANGED=$(git status --porcelain | wc -l)
         
-        # Add activity to session before committing
-        if [ -f "$SESSION_FILE" ]; then
-          echo "#### $(date '+%H:%M') - Auto-commit: $FILES_CHANGED files changed" >> "$SESSION_FILE"
+        # Add activity to the log
+        if [ -f "/tmp/synergy/active_session" ]; then
+          mkdir -p "/tmp/synergy"
+          echo "$(date '+%H:%M') - Auto-commit: $FILES_CHANGED files changed" >> "/tmp/synergy/activities.log"
         fi
         
         # Stage and commit
@@ -175,9 +176,9 @@ $COMMITS
 ## Module Tracker
 Updates have been applied to the Module Tracker."
   
-  # Update session if active
-  if [ -f "$SESSION_FILE" ] && grep -q "Status: Active" "$SESSION_FILE"; then
-    log_to_session "Created PR: $TITLE"
+  # Update activity log if there's an active session
+  if [ -f "/tmp/synergy/active_session" ]; then
+    log_activity "Created PR: $TITLE"
   fi
   
   echo_color "$GREEN" "Created PR: $TITLE"

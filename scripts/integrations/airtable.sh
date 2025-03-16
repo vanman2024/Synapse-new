@@ -45,35 +45,12 @@ update_module_in_airtable() {
   return 0
 }
 
-# Log session to Airtable
+# Legacy function - replaced by direct API calls in session.sh
+# This function is deprecated and will be removed
 log_session_to_airtable() {
-  SESSION_FILE="$1"
-  MODULE="$2"
-  
-  if [ -z "$SESSION_FILE" ] || [ ! -f "$SESSION_FILE" ]; then
-    echo_color "$YELLOW" "Usage: log_session_to_airtable <session-file> [module-name]. No session file provided or not found."
-    return 1
-  fi
-  
-  # Check if Airtable integration is available
-  if [ ! -f "$AIRTABLE_SCRIPT" ]; then
-    echo_color "$YELLOW" "Airtable integration not available. Skipping Airtable session log."
-    return 1
-  fi
-  
-  # Call the Airtable script to log the session
-  if [ -n "$MODULE" ]; then
-    "$AIRTABLE_SCRIPT" log-session "$SESSION_FILE" "$MODULE"
-  else
-    "$AIRTABLE_SCRIPT" log-session "$SESSION_FILE"
-  fi
-  
-  if [ $? -eq 0 ]; then
-    echo_color "$GREEN" "Session logged in Airtable."
-  else
-    echo_color "$RED" "Failed to log session in Airtable."
-    return 1
-  fi
+  echo_color "$YELLOW" "Warning: log_session_to_airtable is deprecated."
+  echo_color "$BLUE" "Sessions are now automatically tracked directly in Airtable."
+  echo_color "$BLUE" "Use 'synergy.sh start' and 'synergy.sh end' to manage sessions."
   
   return 0
 }

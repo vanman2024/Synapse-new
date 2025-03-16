@@ -6,7 +6,7 @@
 # Get repository directory
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../../ && pwd)"
 OVERVIEW_FILE="$REPO_DIR/docs/project/DEVELOPMENT_OVERVIEW.md"
-SESSION_FILE="$REPO_DIR/SESSION.md"
+TMP_SESSION_FILE="/tmp/synergy/active_session"
 LOG_FILE="$REPO_DIR/logs/doc-check.log"
 AIRTABLE_SCRIPT="$REPO_DIR/tools/dev-tracker/synergy-airtable.sh"
 
@@ -51,8 +51,9 @@ if ! grep -q "## Immediate Next Steps" "$OVERVIEW_FILE"; then
 fi
 
 # 3. Verify that the current session focus is in the current phase
-if [ -f "$SESSION_FILE" ] && grep -q "Status: Active" "$SESSION_FILE"; then
-  FOCUS_MODULE=$(grep "Focus:" "$SESSION_FILE" | cut -d':' -f2- | awk '{$1=$1};1')
+if [ -f "$TMP_SESSION_FILE" ]; then
+  # Read focus module from temp session file (format: branch,focus,starttime)
+  IFS=',' read -r BRANCH FOCUS_MODULE START_TIME <<< "$(cat "$TMP_SESSION_FILE")"
   
   if [ -n "$FOCUS_MODULE" ]; then
     # Get the current phase section
