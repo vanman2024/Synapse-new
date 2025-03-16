@@ -8,8 +8,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 # Start a development session with automatic tracking
 start_session() {
   CURRENT_DATE=$(date "+%Y-%m-%d")
-  CURRENT_TIME=$(date "+%H:%M")
   CURRENT_BRANCH=$(git branch --show-current)
+  CURRENT_COMMIT=$(git rev-parse HEAD)
   
   # Check if there's already an active session in Airtable for today
   # This is a placeholder - we'd need to query Airtable directly in the future
@@ -28,31 +28,41 @@ start_session() {
     fi
   fi
   
-  # Get current module focus from the overview document
-  # Look for the phase marked (Current) then extract modules from that phase
-  CURRENT_PHASE_LINE=$(grep -n "(Current)" "$OVERVIEW_FILE" | cut -d':' -f1)
-  
-  if [ -n "$CURRENT_PHASE_LINE" ]; then
-    # Look for incomplete modules (with "[ ]" rather than "[x]") in the current phase
-    NEXT_PHASE_LINE=$(grep -n "## Phase" "$OVERVIEW_FILE" | awk -v start=$CURRENT_PHASE_LINE '$1 > start {print $1; exit}')
+  # Use our API to get the current focus module and phase
+  # Allow overriding focus module as an argument
+  FOCUS_MODULE=""
+  if [ ! -z "$1" ]; then
+    FOCUS_MODULE="$1"
+  else
+    # Use Node.js to get the next module to work on
+    NEXT_MODULE_RESULT=$(node -e "
+      const airtable = require('$REPO_DIR/tools/dev-tracker/airtable-integration');
+      
+      // Find next module to work on
+      airtable.getNextModuleToWorkOn()
+        .then(module => {
+          if (module && module.fields) {
+            console.log(module.fields['Module Name'] || 'Development Tasks');
+          } else {
+            console.log('Development Tasks');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          console.log('Development Tasks');
+        });
+    ")
     
-    if [ -z "$NEXT_PHASE_LINE" ]; then
-      # If no next phase, read to the end of file
-      FOCUS_MODULE=$(sed -n "$CURRENT_PHASE_LINE,\$p" "$OVERVIEW_FILE" | grep -m 1 "\[ \]" | sed -E 's/.*\[ \] (.*)/\1/')
+    if [ -n "$NEXT_MODULE_RESULT" ]; then
+      FOCUS_MODULE="$NEXT_MODULE_RESULT"
     else
-      # Otherwise read to the next phase
-      FOCUS_MODULE=$(sed -n "$CURRENT_PHASE_LINE,$((NEXT_PHASE_LINE-1))p" "$OVERVIEW_FILE" | grep -m 1 "\[ \]" | sed -E 's/.*\[ \] (.*)/\1/')
+      FOCUS_MODULE="Development Tasks"
     fi
-  fi
-  
-  # If no focus module found, use a generic name
-  if [ -z "$FOCUS_MODULE" ]; then
-    FOCUS_MODULE="Development Tasks"
   fi
   
   # Create a temporary file to mark active session
   mkdir -p "/tmp/synergy"
-  echo "$CURRENT_BRANCH,$FOCUS_MODULE,$CURRENT_TIME" > "/tmp/synergy/active_session"
+  echo "$CURRENT_BRANCH,$FOCUS_MODULE,$CURRENT_COMMIT" > "/tmp/synergy/active_session"
   
   # Clear previous activity log
   rm -f "/tmp/synergy/activities.log"
@@ -60,9 +70,17 @@ start_session() {
   # Record first activity
   log_activity "Session started with focus on $FOCUS_MODULE"
   
-  # Create the session record in Airtable
+  # Create the session record in Airtable with simplified strings
   source "$REPO_DIR/scripts/integrations/airtable.sh"
-  "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" create-session "$CURRENT_DATE" "$CURRENT_BRANCH" "$FOCUS_MODULE" "Active" "$CURRENT_TIME" "" "Started development session focusing on $FOCUS_MODULE"
+  SIMPLE_SUMMARY="Started development session"
+  SIMPLE_CONTEXT="Working on implementation"
+  
+  # Use a fixed module name if the dynamic one contains problematic characters
+  if [[ "$FOCUS_MODULE" == *"..."* || "$FOCUS_MODULE" == *"'"* || "$FOCUS_MODULE" == *'"'* ]]; then
+    "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" create-session "$CURRENT_DATE" "$CURRENT_BRANCH" "Development Tasks" "Active" "$CURRENT_COMMIT" "" "$SIMPLE_SUMMARY" "$SIMPLE_CONTEXT"
+  else
+    "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" create-session "$CURRENT_DATE" "$CURRENT_BRANCH" "$FOCUS_MODULE" "Active" "$CURRENT_COMMIT" "" "$SIMPLE_SUMMARY" "$SIMPLE_CONTEXT"
+  fi
 
   echo_color "$GREEN" "Session started. Focus: $FOCUS_MODULE"
   
@@ -131,8 +149,8 @@ end_session() {
   # Get session information from the active session file
   IFS=',' read -r BRANCH FOCUS_MODULE START_TIME <<< "$(cat "/tmp/synergy/active_session")"
   
-  # Set end time
-  END_TIME=$(date "+%H:%M")
+  # Get current commit hash for end_commit
+  END_COMMIT=$(git rev-parse HEAD)
   
   # Generate activity summary from git
   ACTIVITIES=$(git log --pretty=format:"- %s (%ar)" --since="5 hours ago" | head -5)
@@ -161,8 +179,29 @@ end_session() {
     SUMMARY="$SUMMARY Module progress: $MODULE_PROGRESS"
   fi
   
+  # Check if the summary indicates module completion
+  MODULE_COMPLETE=0
+  if [[ "$SUMMARY" == *"complete"* || "$SUMMARY" == *"done"* || "$SUMMARY" == *"finish"* ]]; then
+    MODULE_COMPLETE=1
+  fi
+  
+  # Get the current end time
+  END_TIME=$(date '+%H:%M')
+  
   # Update the session in Airtable
-  "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Completed" "$END_TIME" "$SUMMARY" "$FOCUS_MODULE"
+  if [ $MODULE_COMPLETE -eq 1 ]; then
+    # Create simplified summary without quotes/special chars
+    SHORT_SUMMARY="Completed module: $FOCUS_MODULE."
+    
+    # Also update module status to completed
+    "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Completed" "$END_COMMIT" "$SHORT_SUMMARY" "$FOCUS_MODULE"
+  else
+    # Session completed but module may still be in progress
+    # Create simplified summary without quotes/special chars
+    SHORT_SUMMARY="Session completed working on $FOCUS_MODULE."
+    
+    "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Completed" "$END_COMMIT" "$SHORT_SUMMARY" "$FOCUS_MODULE"
+  fi
   
   # Stop auto-commit if running
   source "$REPO_DIR/scripts/core/git-hooks.sh"

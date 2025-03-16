@@ -3,6 +3,7 @@ import { ContentRepository } from '../repositories/interfaces/ContentRepository'
 import { AirtableContentRepository } from '../repositories/implementations/AirtableContentRepository';
 import { OpenAIService } from './OpenAIService';
 import { CloudinaryService } from './CloudinaryService';
+import { ContentAnalysisService, ContentAnalysisResult } from './content-analysis';
 
 /**
  * Service for managing content creation, generation, and lifecycle
@@ -11,6 +12,7 @@ export class ContentService {
   private contentRepository: ContentRepository;
   private openAIService: OpenAIService;
   private cloudinaryService: CloudinaryService;
+  private contentAnalysisService: ContentAnalysisService;
 
   /**
    * Constructor - initializes repositories and services
@@ -19,6 +21,7 @@ export class ContentService {
     this.contentRepository = new AirtableContentRepository();
     this.openAIService = new OpenAIService();
     this.cloudinaryService = new CloudinaryService();
+    this.contentAnalysisService = new ContentAnalysisService();
   }
 
   /**
@@ -389,6 +392,104 @@ export class ContentService {
     } catch (error) {
       console.error(`Error generating content revision for ${contentId}:`, error);
       return null;
+    }
+  }
+  
+  /**
+   * Analyze content and provide insights
+   * @param contentId Content ID to analyze
+   * @returns A promise that resolves to analysis results and updated content
+   */
+  public async analyzeContent(contentId: string): Promise<{
+    analysis: ContentAnalysisResult;
+    content: Content | null;
+  }> {
+    try {
+      // Get content to analyze
+      const content = await this.contentRepository.findById(contentId);
+      if (!content) {
+        throw new Error(`Content with ID ${contentId} not found`);
+      }
+      
+      // Combine all available text for analysis
+      let textToAnalyze = '';
+      
+      if (content.title) {
+        textToAnalyze += content.title + '\n\n';
+      }
+      
+      if (content.description) {
+        textToAnalyze += content.description + '\n\n';
+      }
+      
+      if (content.formattedText) {
+        textToAnalyze += content.formattedText + '\n\n';
+      } else if (content.rawText) {
+        textToAnalyze += content.rawText;
+      }
+      
+      // Analyze the content
+      const analysis = await this.contentAnalysisService.analyzeContent(textToAnalyze);
+      
+      // Update content with analysis results
+      const updatedContent = await this.contentRepository.update(contentId, {
+        metadata: {
+          ...content.metadata,
+          contentAnalysis: {
+            sentiment: analysis.sentiment,
+            topics: analysis.topics,
+            keywords: analysis.keywords || [],
+            readingTime: analysis.readingTime || 0,
+            analyzedAt: new Date().toISOString()
+          }
+        }
+      });
+      
+      return {
+        analysis,
+        content: updatedContent
+      };
+    } catch (error) {
+      console.error(`Error analyzing content ${contentId}:`, error);
+      throw new Error(`Failed to analyze content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+  
+  /**
+   * Get keywords from content
+   * @param contentId Content ID
+   * @returns A promise that resolves to extracted keywords
+   */
+  public async extractKeywords(contentId: string): Promise<string[]> {
+    try {
+      // Get content
+      const content = await this.contentRepository.findById(contentId);
+      if (!content) {
+        throw new Error(`Content with ID ${contentId} not found`);
+      }
+      
+      // Combine all available text for analysis
+      let textToAnalyze = '';
+      
+      if (content.title) {
+        textToAnalyze += content.title + '\n\n';
+      }
+      
+      if (content.description) {
+        textToAnalyze += content.description + '\n\n';
+      }
+      
+      if (content.formattedText) {
+        textToAnalyze += content.formattedText + '\n\n';
+      } else if (content.rawText) {
+        textToAnalyze += content.rawText;
+      }
+      
+      // Extract keywords
+      return this.contentAnalysisService.extractKeywords(textToAnalyze);
+    } catch (error) {
+      console.error(`Error extracting keywords from content ${contentId}:`, error);
+      return [];
     }
   }
 }

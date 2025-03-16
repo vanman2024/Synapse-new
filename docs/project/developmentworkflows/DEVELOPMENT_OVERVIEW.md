@@ -22,7 +22,7 @@ Synapse is an API service that:
 - [x] Create comprehensive test suite for Content Repository
 - [x] Set up CI/CD pipeline for continuous integration
 
-## Phase 2: Content Generation Enhancement (Current)
+## Phase 2: Content Generation Enhancement (Previous)
 
 - [x] Implement Content Repository for content entities
 - [x] Implement Content Controller for API endpoints

@@ -50,13 +50,20 @@ case "$COMMAND" in
     BRANCH="$2"
     FOCUS="$3"
     STATUS="$4"
-    START_TIME="$5"
-    END_TIME="$6"
+    START_COMMIT="$5"
+    END_COMMIT="$6"
     SUMMARY="$7"
+    BRANCH_CONTEXT="$8"
+    COMPONENTS="$9"
     
-    if [ -z "$DATE" ] || [ -z "$BRANCH" ] || [ -z "$FOCUS" ] || [ -z "$STATUS" ] || [ -z "$START_TIME" ]; then
-      echo -e "${YELLOW}Usage: synergy-airtable.sh create-session <date> <branch> <focus> <status> <start_time> [<end_time>] [<summary>]${NC}"
+    if [ -z "$DATE" ] || [ -z "$BRANCH" ] || [ -z "$FOCUS" ] || [ -z "$STATUS" ]; then
+      echo -e "${YELLOW}Usage: synergy-airtable.sh create-session <date> <branch> <focus> <status> [<start_commit>] [<end_commit>] [<summary>] [<branch_context>] [<components>]${NC}"
       exit 1
+    fi
+    
+    # Get current commit hash if not provided
+    if [ -z "$START_COMMIT" ]; then
+      START_COMMIT=$(git rev-parse HEAD)
     fi
     
     # Extract feature name from branch for better summaries
@@ -81,7 +88,7 @@ case "$COMMAND" in
       fi
     fi
     
-    # Extract commits
+    # Extract recent commits
     COMMITS=$(git log --pretty=format:"%h %s" --since="1 hour ago" | head -5 | tr '\n' '|')
     
     # Call Node.js script to create session
@@ -92,9 +99,11 @@ case "$COMMAND" in
         branch: '$BRANCH',
         module: '$FOCUS',
         status: '$STATUS',
-        startTime: '$START_TIME',
-        endTime: '$END_TIME',
+        startCommit: '$START_COMMIT',
+        endCommit: '$END_COMMIT',
         summary: '$SUMMARY',
+        branchContext: '$BRANCH_CONTEXT',
+        components: '$COMPONENTS'.split(',').filter(c => c),
         commits: '$COMMITS'.split('|').filter(c => c)
       };
       airtable.logSession(session)
@@ -122,13 +131,19 @@ case "$COMMAND" in
   # Update an existing session
   update-session)
     STATUS="$1"
-    END_TIME="$2"
+    END_COMMIT="$2"
     SUMMARY="$3"
     FOCUS="$4"
+    COMPONENTS="$5"
     
     if [ -z "$STATUS" ]; then
-      echo -e "${YELLOW}Usage: synergy-airtable.sh update-session <status> [<end_time>] [<summary>] [<focus>]${NC}"
+      echo -e "${YELLOW}Usage: synergy-airtable.sh update-session <status> [<end_commit>] [<summary>] [<focus>] [<components>]${NC}"
       exit 1
+    fi
+    
+    # Use current commit hash for end_commit if not provided
+    if [ -z "$END_COMMIT" ] && [ "$STATUS" = "Completed" ]; then
+      END_COMMIT=$(git rev-parse HEAD)
     fi
     
     # Get the session ID if available
@@ -152,9 +167,10 @@ case "$COMMAND" in
         status: '$STATUS'
       };
       
-      if ('$END_TIME') updateData.endTime = '$END_TIME';
+      if ('$END_COMMIT') updateData.endCommit = '$END_COMMIT';
       if ('$SUMMARY') updateData.summary = '$SUMMARY';
       if ('$FOCUS') updateData.module = '$FOCUS';
+      if ('$COMPONENTS') updateData.components = '$COMPONENTS'.split(',').filter(c => c);
       if ('$COMMITS') updateData.commits = '$COMMITS'.split('|').filter(c => c);
       
       airtable.updateSession('$SESSION_ID', updateData)
@@ -334,6 +350,144 @@ case "$COMMAND" in
     fi
     ;;
     
+  # Register a component
+  component-register)
+    NAME="$1"
+    FILE_PATH="$2"
+    COMPONENT_TYPE="$3"
+    PURPOSE="$4"
+    MODULE="$5"
+    
+    if [ -z "$NAME" ] || [ -z "$FILE_PATH" ] || [ -z "$COMPONENT_TYPE" ]; then
+      echo -e "${YELLOW}Usage: synergy-airtable.sh component-register <name> <file-path> <type> [<purpose>] [<module>]${NC}"
+      echo -e "${YELLOW}Types: Controller, Service, Repository, Model, Middleware, Utility, Script, Configuration, Other${NC}"
+      exit 1
+    fi
+    
+    # Get the current active session ID if exists
+    SESSION_ID=""
+    if [ -f "/tmp/synergy/session_id" ]; then
+      SESSION_ID=$(cat "/tmp/synergy/session_id")
+    fi
+    
+    # If no module specified but we have an active session, try to get the module from the session
+    if [ -z "$MODULE" ] && [ -n "$SESSION_ID" ]; then
+      # Get the module from the active session
+      MODULE_FROM_SESSION=$($NODE_BIN -e "
+        const airtable = require('$SCRIPT_DIR/airtable-integration');
+        airtable.getSession('$SESSION_ID')
+          .then(session => {
+            if (session && session.fields && session.fields.Focus && session.fields.Focus.length > 0) {
+              // Get the module name from the focus ID
+              return airtable.getTable('Modules').find(session.fields.Focus[0]);
+            }
+            return null;
+          })
+          .then(module => {
+            if (module && module.fields && module.fields['Module Name']) {
+              console.log(module.fields['Module Name']);
+            }
+          })
+          .catch(err => {
+            console.error(err);
+          });
+      ")
+      
+      if [ -n "$MODULE_FROM_SESSION" ]; then
+        MODULE="$MODULE_FROM_SESSION"
+        echo -e "${BLUE}Using module from active session: ${MODULE}${NC}"
+      fi
+    fi
+    
+    # Call Node.js script to register or update component using the improved function
+    $NODE_BIN -e "
+      const airtableIntegration = require('$SCRIPT_DIR/airtable-integration');
+      
+      // Create component data object
+      const componentData = {
+        name: '$NAME',
+        filePath: '$FILE_PATH',
+        componentType: '$COMPONENT_TYPE',
+        purpose: '$PURPOSE',
+        moduleName: '$MODULE',
+        sessionId: '$SESSION_ID'
+      };
+      
+      // Register or update the component
+      airtableIntegration.registerComponent(componentData)
+        .then(result => {
+          if (result) {
+            console.log('Component successfully registered or updated');
+            process.exit(0);
+          } else {
+            console.error('Failed to register/update component');
+            process.exit(1);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          process.exit(1);
+        });
+    "
+    
+    if [ $? -eq 0 ]; then
+      echo -e "${GREEN}Component registered in Airtable.${NC}"
+    else
+      echo -e "${RED}Failed to register component in Airtable.${NC}"
+      exit 1
+    fi
+    ;;
+    
+  # List registered components
+  component-list)
+    MODULE="$1"
+    
+    # Call Node.js script to list components
+    if [ -n "$MODULE" ]; then
+      $NODE_BIN -e "
+        const airtable = require('$SCRIPT_DIR/airtable-client');
+        airtable.findRecords('ComponentRegistry', '{Module} = \"$MODULE\"')
+          .then(components => {
+            if (components && components.length > 0) {
+              console.log('Components for module $MODULE:');
+              components.forEach(component => {
+                console.log(\`\${component.fields.Name} (\${component.fields.ComponentType}): \${component.fields.FilePath}\`);
+              });
+              process.exit(0);
+            } else {
+              console.log('No components found for module $MODULE');
+              process.exit(1);
+            }
+          })
+          .catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+      "
+    else
+      $NODE_BIN -e "
+        const airtable = require('$SCRIPT_DIR/airtable-client');
+        airtable.getAllRecords('ComponentRegistry')
+          .then(components => {
+            if (components && components.length > 0) {
+              console.log('All registered components:');
+              components.forEach(component => {
+                console.log(\`\${component.fields.Name} (\${component.fields.ComponentType}): \${component.fields.FilePath}\`);
+              });
+              process.exit(0);
+            } else {
+              console.log('No components found');
+              process.exit(1);
+            }
+          })
+          .catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+      "
+    fi
+    ;;
+  
   # Unknown command
   *)
     echo -e "${YELLOW}Unknown command: $COMMAND${NC}"
@@ -342,11 +496,12 @@ case "$COMMAND" in
     echo "  create-session <date> <branch> <focus> <status> <start_time> - Create a new session"
     echo "  update-session <status> [<end_time>] [<summary>] [<focus>] - Update an existing session"
     echo "  get-active-session - Get information about the active session"
-    echo "  log-session <session-file> - (Legacy) Log a session from a file"
     echo "  get-phase - Get current phase information"
     echo "  get-module <module-name> - Get module information" 
     echo "  get-phase-modules <phase-number> - Get modules for a phase"
     echo "  maintain-sessions - Improve session summaries and module links"
+    echo "  component-register <component-name> <file-path> <type> [<purpose>] [<module>] - Register a component"
+    echo "  component-list [<module>] - List registered components"
     echo "  setup - Set up Airtable tables"
     exit 1
     ;;

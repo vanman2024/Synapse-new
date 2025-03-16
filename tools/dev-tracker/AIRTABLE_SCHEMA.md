@@ -26,21 +26,37 @@ Primary Field: Name (Single line text)
 | Description   | Long text          |                                         |
 | LastUpdated   | Date               | Format: YYYY-MM-DD                      |
 
-## Table: Sessions
+## Table: Sessions (Enhanced with Git Context)
 
 Primary Field: Date (Date)
 
+| Field Name      | Field Type           | Options                                  |
+|-----------------|----------------------|-----------------------------------------|
+| Date            | Date                 | Format: YYYY-MM-DD                      |
+| Branch          | Single line text     | Git branch name                         |
+| Focus           | Linked record        | Links to: Modules table                 |
+| Status          | Single select        | Options: Completed, Active              |
+| StartTime       | Single line text     | Format: HH:MM                           |
+| EndTime         | Single line text     | Format: HH:MM                           |
+| Summary         | Long text            | Brief, feature-focused description      |
+| Commits         | Long text            | List of commit messages                 |
+| Notes           | Long text            | Detailed session notes                  |
+| BranchContext   | Long text            | Description of what the branch is doing |
+| StartCommit     | Single line text     | Git commit hash at session start        |
+| EndCommit       | Single line text     | Git commit hash at session end          |
+| Components      | Multiple record links| Links to: ComponentRegistry table       |
+
+## Table: ComponentRegistry (New)
+
+Primary Field: Name (Single line text)
+
 | Field Name    | Field Type         | Options                                  |
 |---------------|--------------------|-----------------------------------------|
-| Date          | Date               | Format: YYYY-MM-DD                      |
-| Branch        | Single line text   |                                         |
-| Focus         | Linked record      | Links to: Modules table                 |
-| Status        | Single select      | Options: Completed, Active              |
-| StartTime     | Single line text   | Format: HH:MM                           |
-| EndTime       | Single line text   | Format: HH:MM                           |
-| Summary       | Long text          | Brief, feature-focused description      |
-| Commits       | Long text          | List of commit messages                 |
-| Notes         | Long text          | Detailed session notes                  |
+| Name          | Single line text   | Component name (e.g., ContentController)|
+| FilePath      | Single line text   | Path in repository                      |
+| ComponentType | Single select      | Options: Controller, Service, Repository, Model, Middleware, Utility, Script, Configuration, Other |
+| Purpose       | Long text          | What the component does                 |
+| Module        | Linked record      | Links to: Modules table                 |
 
 ## Manual Setup Instructions
 

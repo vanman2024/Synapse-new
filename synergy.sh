@@ -66,6 +66,11 @@ show_help() {
   echo "  airtable-maintain - Improve session descriptions and module links in Airtable"
   echo "                  (Runs maintenance on recent sessions to ensure proper linking)"
   echo ""
+  echo -e "${GREEN}Component Registry:${NC}"
+  echo "  component-register <name> <file-path> <type> [purpose] [module] - Register a component"
+  echo "  component-list [module] - List registered components"
+  echo "  * Component types: Controller, Service, Repository, Model, Middleware, Utility, Script, Configuration, Other"
+  echo ""
   echo "Most operations automatically update Airtable and integrate with git."
   echo "Documentation is kept in sync with development progress automatically."
   echo ""
@@ -159,7 +164,27 @@ case "$COMMAND" in
   
   airtable-maintain)
     # Run maintenance script to link sessions to modules
-    "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" maintain-sessions
+    source "$SCRIPT_DIR/integrations/airtable.sh"
+    maintain_sessions
+    ;;
+  
+  # Component registry commands
+  component-register)
+    NAME="$1"
+    FILE_PATH="$2"
+    TYPE="$3"
+    PURPOSE="$4"
+    MODULE="$5"
+    
+    source "$SCRIPT_DIR/integrations/airtable.sh"
+    register_component "$NAME" "$FILE_PATH" "$TYPE" "$PURPOSE" "$MODULE"
+    ;;
+    
+  component-list)
+    MODULE="$1"
+    
+    source "$SCRIPT_DIR/integrations/airtable.sh"
+    list_components "$MODULE"
     ;;
     
   # Help and default

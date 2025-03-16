@@ -2,15 +2,18 @@ import { Request, Response } from 'express';
 import { ContentRepository } from '../../repositories/interfaces/ContentRepository';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '../../types';
+import { ContentService } from '../../services/ContentService';
 
 @injectable()
 export class ContentController {
   private readonly contentRepository: ContentRepository;
+  private readonly contentService: ContentService;
 
   constructor(
     @inject(TYPES.ContentRepository) contentRepository: ContentRepository
   ) {
     this.contentRepository = contentRepository;
+    this.contentService = new ContentService();
   }
 
   /**
@@ -96,6 +99,46 @@ export class ContentController {
     } catch (error) {
       console.error('Error deleting content:', error);
       res.status(500).json({ error: 'Failed to delete content item' });
+    }
+  };
+  
+  /**
+   * Analyze content and return insights
+   */
+  public analyzeContent = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      
+      // Call content service to analyze
+      const result = await this.contentService.analyzeContent(id);
+      
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('Error analyzing content:', error);
+      res.status(500).json({ 
+        error: 'Failed to analyze content',
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  };
+  
+  /**
+   * Extract keywords from content
+   */
+  public extractKeywords = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      
+      // Call content service to extract keywords
+      const keywords = await this.contentService.extractKeywords(id);
+      
+      res.status(200).json({ keywords });
+    } catch (error) {
+      console.error('Error extracting keywords:', error);
+      res.status(500).json({ 
+        error: 'Failed to extract keywords',
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   };
 }
