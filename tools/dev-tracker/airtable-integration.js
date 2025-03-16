@@ -173,13 +173,23 @@ async function logSession(session) {
     const now = new Date();
     const sessionDate = session.date ? new Date(session.date) : now;
     
-    // Simplified session record with only essential fields to reduce errors
+    // Create session record with fields that match Airtable schema
     const sessionRecord = {
       'Branch': session.branch || '',
       'Status': session.status || 'Active',
       'Summary': session.summary || '',
-      'Notes': session.notes || session.summary || ''
+      'Notes': session.notes || session.summary || '',
+      // Add current date as StartDate
+      'StartDate': formatDate(sessionDate)
     };
+    
+    // Add EndDate if it's provided
+    if (session.endTime) {
+      const endDate = typeof session.endTime === 'string' 
+        ? session.endTime 
+        : formatDate(session.endTime);
+      sessionRecord['EndDate'] = endDate;
+    }
     
     // Add commit information if available
     if (session.commits && session.commits.length > 0) {
@@ -191,13 +201,12 @@ async function logSession(session) {
       sessionRecord['BranchContext'] = session.branchContext;
     }
     
-    // Add Git commit hashes
-    if (session.startCommit) {
+    // Add Git commit hashes - commenting these out until we add them in Airtable
+    /*if (session.startCommit) {
       sessionRecord['StartCommit'] = session.startCommit;
     }
     
-    // Temporarily disable EndCommit until the field is added to Airtable
-    /*if (session.endCommit) {
+    if (session.endCommit) {
       sessionRecord['EndCommit'] = session.endCommit;
     }*/
     
@@ -746,24 +755,23 @@ async function updateSession(sessionId, updateData) {
     if (updateData.startTime) {
       const startTime = typeof updateData.startTime === 'string'
         ? updateData.startTime
-        : formatTime(updateData.startTime);
+        : formatDate(updateData.startTime);
       updateObject['StartDate'] = startTime;
     }
     
     if (updateData.endTime) {
       const endTime = typeof updateData.endTime === 'string'
         ? updateData.endTime
-        : formatTime(updateData.endTime);
+        : formatDate(updateData.endTime);
       updateObject['EndDate'] = endTime;
     }
     
-    // Handle commit hashes
-    if (updateData.startCommit) {
+    // Handle commit hashes - commenting these out until we add them in Airtable
+    /*if (updateData.startCommit) {
       updateObject['StartCommit'] = updateData.startCommit;
     }
     
-    // Temporarily disable EndCommit until the field is added to Airtable
-    /*if (updateData.endCommit) {
+    if (updateData.endCommit) {
       updateObject['EndCommit'] = updateData.endCommit;
     }*/
     
@@ -773,7 +781,7 @@ async function updateSession(sessionId, updateData) {
       
       // Set end time if not already set
       if (!updateObject['EndDate']) {
-        updateObject['EndDate'] = formatTime(new Date());
+        updateObject['EndDate'] = formatDate(new Date());
       }
       
       // Temporarily disable EndCommit until the field is added to Airtable
