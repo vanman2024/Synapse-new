@@ -182,41 +182,17 @@ end_session() {
   
   # Update the session in Airtable
   if [ $MODULE_COMPLETE -eq 1 ]; then
+    # Create simplified summary without quotes/special chars
+    SHORT_SUMMARY="Completed module: $FOCUS_MODULE."
+    
     # Also update module status to completed
-    node -e "
-      const airtable = require('$REPO_DIR/tools/dev-tracker/airtable-integration');
-      
-      // Get session ID
-      const sessionId = require('fs').readFileSync('/tmp/synergy/session_id', 'utf8');
-      
-      // Update session with module completion
-      airtable.updateSession(sessionId, {
-        status: 'Completed',
-        endCommit: '$END_COMMIT',
-        endTime: '$END_TIME',
-        summary: 'Completed module: $FOCUS_MODULE. $SUMMARY',
-        module: '$FOCUS_MODULE'
-      })
-      .catch(err => console.error('Error updating session:', err));
-    "
+    "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Completed" "$END_COMMIT" "$SHORT_SUMMARY" "$FOCUS_MODULE"
   else
     # Session completed but module may still be in progress
-    node -e "
-      const airtable = require('$REPO_DIR/tools/dev-tracker/airtable-integration');
-      
-      // Get session ID
-      const sessionId = require('fs').readFileSync('/tmp/synergy/session_id', 'utf8');
-      
-      // Update session with module completion
-      airtable.updateSession(sessionId, {
-        status: 'Completed',
-        endCommit: '$END_COMMIT',
-        endTime: '$END_TIME',
-        summary: '$SUMMARY',
-        module: '$FOCUS_MODULE'
-      })
-      .catch(err => console.error('Error updating session:', err));
-    "
+    # Create simplified summary without quotes/special chars
+    SHORT_SUMMARY="Session completed working on $FOCUS_MODULE."
+    
+    "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Completed" "$END_COMMIT" "$SHORT_SUMMARY" "$FOCUS_MODULE"
   fi
   
   # Stop auto-commit if running
