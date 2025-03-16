@@ -1,11 +1,17 @@
 /**
  * Setup script for Airtable development tracking
  * This script populates Airtable tables with data from CSV files
+ * and sets up new tables for enhanced tracking
  */
 const airtableClient = require('./airtable-client');
 const fs = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse/sync');
+const { createComponentRegistryTable } = require('./create-component-registry');
+const { enhanceSessionsTable } = require('./enhance-sessions');
+// Import the maintain-sessions script but don't run it immediately
+// It will be run separately after setup to avoid circular dependencies
+const maintainSessions = require('./maintain-sessions');
 
 // CSV file paths
 const phasesCSV = path.join(__dirname, 'csv/phases.csv');
@@ -55,6 +61,14 @@ async function importCSV(filePath, tableName, fieldMap = {}) {
 // Setup tables in Airtable
 async function setupTables() {
   try {
+    console.log('Setting up Airtable for enhanced tracking...');
+    
+    // Create new ComponentRegistry table
+    await createComponentRegistryTable();
+    
+    // Enhance Sessions table with Git context fields
+    await enhanceSessionsTable();
+    
     console.log('Populating Airtable tables from CSV files...');
     
     // Import phases

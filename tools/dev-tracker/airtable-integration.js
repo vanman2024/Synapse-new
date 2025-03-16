@@ -15,11 +15,10 @@ async function updateModuleStatus(moduleName, status, phaseName = null) {
   try {
     console.log(`Updating module "${moduleName}" to status "${status}" in Airtable...`);
     
-    // Find the module record
-    const formula = `{Module Name} = "${moduleName}"`;
-    const records = await airtableClient.findRecords('Modules', formula);
+    // Find the module record using our improved helper function
+    const moduleRecord = await findModuleByName(moduleName);
     
-    if (records.length === 0) {
+    if (!moduleRecord) {
       console.error(`Module "${moduleName}" not found in Airtable.`);
       return null;
     }
@@ -52,19 +51,63 @@ async function updateModuleStatus(moduleName, status, phaseName = null) {
     if (phaseName) {
       try {
         // Extract the main phase name from format like "Phase 2: Content Generation Enhancement (Current)"
-        const simplePhaseName = phaseName.includes(':') ? 
-          phaseName.split(':')[1].trim() : phaseName;
+        let phaseNameToSearch = phaseName;
+        if (phaseName.includes(':')) {
+          phaseNameToSearch = phaseName.split(':')[1].trim();
+        }
         
-        // Look up by partial name match (using FIND function in formula)
-        const phaseRecords = await airtableClient.findRecords('Phases', 
-          `FIND("${simplePhaseName}", {Description}) > 0`);
+        // First try to search by Phase Name
+        let phaseRecords = [];
+        try {
+          phaseRecords = await airtableClient.findRecords('Phases', 
+            `{Phase Name} = "${phaseNameToSearch}"`);
+        } catch (error) {
+          console.log(`Error searching by Phase Name: ${error.message}`);
+        }
+        
+        // If no results, try partial match on Phase Name
+        if (phaseRecords.length === 0) {
+          try {
+            phaseRecords = await airtableClient.findRecords('Phases', 
+              `FIND("${phaseNameToSearch}", {Phase Name}) > 0`);
+          } catch (error) {
+            console.log(`Error searching by Phase Name partial match: ${error.message}`);
+          }
+        }
+        
+        // If still no results, try partial match on Description
+        if (phaseRecords.length === 0) {
+          try {
+            phaseRecords = await airtableClient.findRecords('Phases', 
+              `FIND("${phaseNameToSearch}", {Description}) > 0`);
+          } catch (error) {
+            console.log(`Error searching by Description partial match: ${error.message}`);
+          }
+        }
+        
+        // Last resort - get all phases and search in memory
+        if (phaseRecords.length === 0) {
+          console.log('Fetching all phases for in-memory search...');
+          const allPhases = await airtableClient.getAllRecords('Phases');
+          
+          for (const record of allPhases) {
+            const phaseName = record.fields['Phase Name'] || '';
+            const description = record.fields['Description'] || '';
+            
+            if (phaseName.includes(phaseNameToSearch) || 
+                description.includes(phaseNameToSearch)) {
+              phaseRecords = [record];
+              break;
+            }
+          }
+        }
         
         if (phaseRecords.length > 0) {
           // Set linked record field - must be an array of IDs
           updateFields['Phase'] = [phaseRecords[0].id];
-          console.log(`Linked module to phase: ${simplePhaseName}`);
+          console.log(`Linked module to phase: ${phaseRecords[0].fields['Phase Name'] || phaseName}`);
         } else {
-          console.log(`Phase "${simplePhaseName}" not found for linking`);
+          console.log(`Phase "${phaseName}" not found for linking`);
         }
       } catch (error) {
         console.log(`Could not link to phase: ${error.message}`);
@@ -72,7 +115,7 @@ async function updateModuleStatus(moduleName, status, phaseName = null) {
     }
     
     // Update the record
-    const recordId = records[0].id;
+    const recordId = moduleRecord.id;
     const updatedRecord = await airtableClient.updateRecord('Modules', recordId, updateFields);
     
     console.log(`Module "${moduleName}" updated to "${airtableStatus}" in Airtable.`);
@@ -94,46 +137,78 @@ async function logSession(session) {
     
     // Prepare session record
     const sessionRecord = {
-      'Date': session.date || new Date().toISOString().split('T')[0],
       'Branch': session.branch || '',
       'Status': session.status || 'Completed',
-      'StartTime': session.startTime || '',
-      'EndTime': session.endTime || '',
       'Summary': session.summary || '',
       'Commits': session.commits ? session.commits.join(', ') : '',
-      'Notes': session.notes || ''
+      'Notes': session.notes || session.summary || '',
+      'BranchContext': session.branchContext || ''
     };
+    
+    // Add Git commit hashes
+    if (session.startCommit) {
+      sessionRecord['StartCommit'] = session.startCommit;
+    } else if (session.startTime) {
+      // For backward compatibility, if startCommit isn't provided but startTime is
+      sessionRecord['StartCommit'] = session.startTime;
+    }
+    
+    if (session.endCommit) {
+      sessionRecord['EndCommit'] = session.endCommit;
+    } else if (session.endTime) {
+      // For backward compatibility, if endCommit isn't provided but endTime is
+      sessionRecord['EndCommit'] = session.endTime;
+    }
     
     // If there's a related module, look up its ID and establish the link
     if (session.module) {
       try {
         console.log(`Looking up module: "${session.module}"`);
         
-        // Try exact match first
-        let moduleRecords = await airtableClient.findRecords('Modules', 
-          `{Module Name} = "${session.module}"`);
-          
-        // If no exact match, try partial match
-        if (moduleRecords.length === 0) {
-          // Create a more flexible search pattern
-          const moduleParts = session.module.split(' ');
-          // If module has multiple words, search for records containing the first two words
-          if (moduleParts.length > 1) {
-            const searchPattern = moduleParts.slice(0, 2).join(' ');
-            moduleRecords = await airtableClient.findRecords('Modules', 
-              `FIND("${searchPattern}", {Module Name}) > 0`);
-          }
-        }
+        // Use our improved helper function to find the module
+        const moduleRecord = await findModuleByName(session.module);
         
-        if (moduleRecords.length > 0) {
+        if (moduleRecord) {
           // Set linked record field for Focus - must be an array of IDs
-          sessionRecord['Focus'] = [moduleRecords[0].id];
-          console.log(`Linked session to module: ${moduleRecords[0].fields['Module Name']}`);
+          sessionRecord['Focus'] = [moduleRecord.id];
+          console.log(`Linked session to module: ${moduleRecord.fields['Module Name']}`);
         } else {
           console.log(`No matching module found for "${session.module}"`);
         }
       } catch (error) {
         console.log(`Could not link to module: ${error.message}`);
+      }
+    }
+    
+    // If there are components to link, look them up and create the links
+    if (session.components && session.components.length > 0) {
+      try {
+        console.log(`Looking up components: ${session.components.join(', ')}`);
+        
+        const componentIds = [];
+        
+        // For each component, find its record in Airtable
+        for (const componentName of session.components) {
+          if (!componentName) continue;
+          
+          const componentRecords = await airtableClient.findRecords('ComponentRegistry', 
+            `{Name} = "${componentName}"`);
+            
+          if (componentRecords.length > 0) {
+            componentIds.push(componentRecords[0].id);
+            console.log(`Found component: ${componentName}`);
+          } else {
+            console.log(`Component not found: ${componentName}`);
+          }
+        }
+        
+        if (componentIds.length > 0) {
+          // Set linked record field for Components - must be an array of IDs
+          sessionRecord['Components'] = componentIds;
+          console.log(`Linked session to ${componentIds.length} components`);
+        }
+      } catch (error) {
+        console.log(`Could not link to components: ${error.message}`);
       }
     }
     
@@ -157,17 +232,16 @@ async function getModuleInfo(moduleName) {
   try {
     console.log(`Getting info for module "${moduleName}" from Airtable...`);
     
-    // Find the module record
-    const formula = `{Name} = "${moduleName}"`;
-    const records = await airtableClient.findRecords('Modules', formula);
+    // Use our improved findModuleByName function to get the module record
+    const moduleRecord = await findModuleByName(moduleName);
     
-    if (records.length === 0) {
-      console.error(`Module "${moduleName}" not found in Airtable.`);
-      return null;
+    if (moduleRecord) {
+      console.log(`Found module "${moduleRecord.fields['Module Name']}"`);
+      return moduleRecord.fields;
     }
     
-    // Return the record fields
-    return records[0].fields;
+    console.error(`Module "${moduleName}" not found in Airtable.`);
+    return null;
   } catch (error) {
     console.error(`Error getting module info from Airtable:`, error);
     return null;
@@ -182,17 +256,30 @@ async function getCurrentPhase() {
   try {
     console.log('Getting current phase from Airtable...');
     
-    // Find the current phase
-    const formula = `{Status} = "Current"`;
-    const records = await airtableClient.findRecords('Phases', formula);
+    // Based on list-fields.js, we know the actual field names in Phases table:
+    // - Description
+    // - Modules
+    // - Phase Name
+    // - Phase Number
     
-    if (records.length === 0) {
-      console.error('No current phase found in Airtable.');
+    // Get all phases and look for the lowest Phase Number
+    // which usually indicates the current phase
+    const allPhases = await airtableClient.getAllRecords('Phases');
+    
+    if (allPhases.length === 0) {
+      console.error('No phases found in Airtable.');
       return null;
     }
     
-    // Return the record fields
-    return records[0].fields;
+    // Sort phases by Phase Number and get the first one
+    allPhases.sort((a, b) => {
+      const aNum = a.fields['Phase Number'] || 999;
+      const bNum = b.fields['Phase Number'] || 999;
+      return aNum - bNum;
+    });
+    
+    console.log(`Found current phase: ${allPhases[0].fields['Phase Name'] || 'Unknown'}`);
+    return allPhases[0].fields;
   } catch (error) {
     console.error('Error getting current phase from Airtable:', error);
     return null;
@@ -208,12 +295,71 @@ async function getPhaseModules(phaseNumber) {
   try {
     console.log(`Getting modules for phase ${phaseNumber} from Airtable...`);
     
-    // Find modules for the phase
-    const formula = `{Phase Number} = ${phaseNumber}`;
-    const records = await airtableClient.findRecords('Modules', formula);
+    // First, try to get the phase record
+    let phaseRecord = null;
+    try {
+      const phases = await airtableClient.findRecords('Phases', 
+        `{Phase Number} = ${phaseNumber}`);
+      
+      if (phases.length > 0) {
+        phaseRecord = phases[0];
+      }
+    } catch (error) {
+      console.log(`Error finding phase by number: ${error.message}`);
+    }
     
-    // Return the records
-    return records.map(record => record.fields);
+    if (!phaseRecord) {
+      console.log(`Phase ${phaseNumber} not found, getting all modules instead`);
+      const allModules = await airtableClient.getAllRecords('Modules');
+      return allModules.map(record => record.fields);
+    }
+    
+    // Check if the phase has linked modules
+    if (phaseRecord.fields.Modules && 
+        Array.isArray(phaseRecord.fields.Modules) && 
+        phaseRecord.fields.Modules.length > 0) {
+      
+      console.log(`Found ${phaseRecord.fields.Modules.length} linked modules for phase ${phaseNumber}`);
+      
+      // Get all modules that are linked to this phase
+      const linkedModules = [];
+      
+      for (const moduleId of phaseRecord.fields.Modules) {
+        try {
+          const module = await airtableClient.getTable('Modules').find(moduleId);
+          linkedModules.push(module);
+        } catch (error) {
+          console.log(`Error fetching linked module ${moduleId}: ${error.message}`);
+        }
+      }
+      
+      return linkedModules.map(record => record.fields);
+    }
+    
+    // If there are no linked modules, try to find by Phase field
+    try {
+      // Get all modules
+      const allModules = await airtableClient.getAllRecords('Modules');
+      
+      // Filter modules by phase
+      const phaseModules = allModules.filter(module => {
+        if (!module.fields.Phase || !Array.isArray(module.fields.Phase)) {
+          return false;
+        }
+        
+        // Check if any of the linked phases match our phase
+        return module.fields.Phase.includes(phaseRecord.id);
+      });
+      
+      console.log(`Found ${phaseModules.length} modules for phase ${phaseNumber} via Phase field`);
+      return phaseModules.map(record => record.fields);
+    } catch (error) {
+      console.log(`Error finding modules by Phase field: ${error.message}`);
+    }
+    
+    console.log(`No modules found for phase ${phaseNumber}, returning all modules`);
+    const allModules = await airtableClient.getAllRecords('Modules');
+    return allModules.map(record => record.fields);
   } catch (error) {
     console.error(`Error getting phase modules from Airtable:`, error);
     return [];
@@ -235,40 +381,69 @@ async function updateSession(sessionId, updateData) {
     
     // Map standard fields directly
     if (updateData.status) updateObject['Status'] = updateData.status;
-    if (updateData.endTime) updateObject['EndTime'] = updateData.endTime;
     if (updateData.summary) updateObject['Summary'] = updateData.summary;
     if (updateData.commits) updateObject['Commits'] = updateData.commits.join(', ');
+    
+    // Add Git context fields
+    if (updateData.branchContext) updateObject['BranchContext'] = updateData.branchContext;
+    
+    // Handle commit hashes
+    if (updateData.endCommit) {
+      updateObject['EndCommit'] = updateData.endCommit;
+    } else if (updateData.endTime) {
+      // For backward compatibility
+      updateObject['EndCommit'] = updateData.endTime;
+    }
     
     // If there's a module to link, look it up and create the link
     if (updateData.module) {
       try {
         console.log(`Looking up module: "${updateData.module}"`);
         
-        // Try exact match first
-        let moduleRecords = await airtableClient.findRecords('Modules', 
-          `{Module Name} = "${updateData.module}"`);
-          
-        // If no exact match, try partial match
-        if (moduleRecords.length === 0) {
-          // Create a more flexible search pattern
-          const moduleParts = updateData.module.split(' ');
-          // If module has multiple words, search for records containing the first two words
-          if (moduleParts.length > 1) {
-            const searchPattern = moduleParts.slice(0, 2).join(' ');
-            moduleRecords = await airtableClient.findRecords('Modules', 
-              `FIND("${searchPattern}", {Module Name}) > 0`);
-          }
-        }
+        // Use our improved helper function to find the module
+        const moduleRecord = await findModuleByName(updateData.module);
         
-        if (moduleRecords.length > 0) {
+        if (moduleRecord) {
           // Set linked record field for Focus - must be an array of IDs
-          updateObject['Focus'] = [moduleRecords[0].id];
-          console.log(`Linked session to module: ${moduleRecords[0].fields['Module Name']}`);
+          updateObject['Focus'] = [moduleRecord.id];
+          console.log(`Linked session to module: ${moduleRecord.fields['Module Name']}`);
         } else {
           console.log(`No matching module found for "${updateData.module}"`);
         }
       } catch (error) {
         console.log(`Could not link to module: ${error.message}`);
+      }
+    }
+    
+    // If there are components to link, look them up and create the links
+    if (updateData.components && updateData.components.length > 0) {
+      try {
+        console.log(`Looking up components: ${updateData.components.join(', ')}`);
+        
+        const componentIds = [];
+        
+        // For each component, find its record in Airtable
+        for (const componentName of updateData.components) {
+          if (!componentName) continue;
+          
+          const componentRecords = await airtableClient.findRecords('ComponentRegistry', 
+            `{Name} = "${componentName}"`);
+            
+          if (componentRecords.length > 0) {
+            componentIds.push(componentRecords[0].id);
+            console.log(`Found component: ${componentName}`);
+          } else {
+            console.log(`Component not found: ${componentName}`);
+          }
+        }
+        
+        if (componentIds.length > 0) {
+          // Set linked record field for Components - must be an array of IDs
+          updateObject['Components'] = componentIds;
+          console.log(`Linked session to ${componentIds.length} components`);
+        }
+      } catch (error) {
+        console.log(`Could not link to components: ${error.message}`);
       }
     }
     
@@ -347,6 +522,77 @@ async function getRecentSessions(days = 7) {
   }
 }
 
+/**
+ * Find a module by name
+ * @param {string} moduleName - Name of the module to find
+ * @returns {Promise<Object>} - The module record
+ */
+async function findModuleByName(moduleName) {
+  try {
+    console.log(`Finding module: ${moduleName}`);
+    
+    // Based on list-fields.js, we know the actual field in Modules table:
+    // - Module Name (this is correct, so try the exact match first)
+    
+    try {
+      // Try exact match with Module Name field
+      const records = await airtableClient.findRecords('Modules', 
+        `{Module Name} = "${moduleName}"`);
+        
+      if (records.length > 0) {
+        console.log(`Found exact match for module: ${moduleName}`);
+        return records[0];
+      }
+    } catch (error) {
+      console.log(`Exact match error: ${error.message}`);
+    }
+    
+    // Try partial match with Module Name field
+    try {
+      // Create a simplified search pattern (first word or two)
+      const moduleParts = moduleName.split(' ');
+      if (moduleParts.length > 1) {
+        const searchPattern = moduleParts.slice(0, 2).join(' ');
+        
+        // Use FIND to search for the pattern within the field value
+        const formula = `FIND("${searchPattern}", {Module Name}) > 0`;
+        console.log(`Trying partial match with formula: ${formula}`);
+        
+        const partialRecords = await airtableClient.findRecords('Modules', formula);
+          
+        if (partialRecords.length > 0) {
+          console.log(`Found partial match for module: ${moduleName} -> ${partialRecords[0].fields['Module Name']}`);
+          return partialRecords[0];
+        }
+      }
+    } catch (error) {
+      console.log(`Partial match error: ${error.message}`);
+    }
+    
+    // If the above doesn't work, get all modules and filter in memory
+    console.log('Fetching all modules for in-memory search...');
+    const allModules = await airtableClient.getAllRecords('Modules');
+    
+    // Loop through all modules and look for partial matches
+    for (const record of allModules) {
+      const name = record.fields['Module Name'] || '';
+      if (name && (
+        name.toLowerCase().includes(moduleName.toLowerCase()) || 
+        moduleName.toLowerCase().includes(name.toLowerCase())
+      )) {
+        console.log(`Found in-memory match: ${name}`);
+        return record;
+      }
+    }
+    
+    console.log(`No matching module found for: ${moduleName}`);
+    return null;
+  } catch (error) {
+    console.error(`Error finding module by name: ${error}`);
+    return null;
+  }
+}
+
 module.exports = {
   updateModuleStatus,
   logSession,
@@ -355,5 +601,6 @@ module.exports = {
   getPhaseModules,
   updateSession,
   getSession,
-  getRecentSessions
+  getRecentSessions,
+  findModuleByName
 };

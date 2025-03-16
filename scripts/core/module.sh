@@ -108,7 +108,7 @@ update_module() {
     # Update active session marker if it exists
     if [ -f "/tmp/synergy/active_session" ]; then
       # Read current values, update module, keep the same time and branch
-      IFS=',' read -r BRANCH FOCUS_MODULE START_TIME <<< "$(cat /tmp/synergy/active_session")"
+      IFS=',' read -r BRANCH FOCUS_MODULE START_TIME <<< "$(cat /tmp/synergy/active_session)"
       echo "$BRANCH,$MODULE,$START_TIME" > "/tmp/synergy/active_session"
       
       # Also update session in Airtable if we have a session ID

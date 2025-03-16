@@ -8,8 +8,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 # Start a development session with automatic tracking
 start_session() {
   CURRENT_DATE=$(date "+%Y-%m-%d")
-  CURRENT_TIME=$(date "+%H:%M")
   CURRENT_BRANCH=$(git branch --show-current)
+  CURRENT_COMMIT=$(git rev-parse HEAD)
   
   # Check if there's already an active session in Airtable for today
   # This is a placeholder - we'd need to query Airtable directly in the future
@@ -34,15 +34,14 @@ start_session() {
   
   if [ -n "$CURRENT_PHASE_LINE" ]; then
     # Look for incomplete modules (with "[ ]" rather than "[x]") in the current phase
-    NEXT_PHASE_LINE=$(grep -n "## Phase" "$OVERVIEW_FILE" | awk -v start=$CURRENT_PHASE_LINE '$1 > start {print $1; exit}')
+    NEXT_PHASE_LINE=$(grep -n "## Phase" "$OVERVIEW_FILE" | awk -v start=$CURRENT_PHASE_LINE '$1 > start {print $1; exit}' | cut -d':' -f1)
     
-    if [ -z "$NEXT_PHASE_LINE" ]; then
-      # If no next phase, read to the end of file
-      FOCUS_MODULE=$(sed -n "$CURRENT_PHASE_LINE,\$p" "$OVERVIEW_FILE" | grep -m 1 "\[ \]" | sed -E 's/.*\[ \] (.*)/\1/')
-    else
-      # Otherwise read to the next phase
-      FOCUS_MODULE=$(sed -n "$CURRENT_PHASE_LINE,$((NEXT_PHASE_LINE-1))p" "$OVERVIEW_FILE" | grep -m 1 "\[ \]" | sed -E 's/.*\[ \] (.*)/\1/')
-    fi
+    echo "DEBUG: CURRENT_PHASE_LINE=$CURRENT_PHASE_LINE, NEXT_PHASE_LINE=$NEXT_PHASE_LINE"
+    
+    # Only read to the end of file, as we might have issues with phase line detection
+    FOCUS_MODULE=$(sed -n "$CURRENT_PHASE_LINE,\$p" "$OVERVIEW_FILE" | grep -m 1 "\[ \]" | sed -E 's/.*\[ \] (.*)/\1/')
+    
+    echo "DEBUG: FOCUS_MODULE=$FOCUS_MODULE"
   fi
   
   # If no focus module found, use a generic name
@@ -52,7 +51,7 @@ start_session() {
   
   # Create a temporary file to mark active session
   mkdir -p "/tmp/synergy"
-  echo "$CURRENT_BRANCH,$FOCUS_MODULE,$CURRENT_TIME" > "/tmp/synergy/active_session"
+  echo "$CURRENT_BRANCH,$FOCUS_MODULE,$CURRENT_COMMIT" > "/tmp/synergy/active_session"
   
   # Clear previous activity log
   rm -f "/tmp/synergy/activities.log"
@@ -62,7 +61,7 @@ start_session() {
   
   # Create the session record in Airtable
   source "$REPO_DIR/scripts/integrations/airtable.sh"
-  "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" create-session "$CURRENT_DATE" "$CURRENT_BRANCH" "$FOCUS_MODULE" "Active" "$CURRENT_TIME" "" "Started development session focusing on $FOCUS_MODULE"
+  "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" create-session "$CURRENT_DATE" "$CURRENT_BRANCH" "$FOCUS_MODULE" "Active" "$CURRENT_COMMIT" "" "Started development session focusing on $FOCUS_MODULE" "Working on $FOCUS_MODULE implementation"
 
   echo_color "$GREEN" "Session started. Focus: $FOCUS_MODULE"
   
@@ -131,8 +130,8 @@ end_session() {
   # Get session information from the active session file
   IFS=',' read -r BRANCH FOCUS_MODULE START_TIME <<< "$(cat "/tmp/synergy/active_session")"
   
-  # Set end time
-  END_TIME=$(date "+%H:%M")
+  # Get current commit hash for end_commit
+  END_COMMIT=$(git rev-parse HEAD)
   
   # Generate activity summary from git
   ACTIVITIES=$(git log --pretty=format:"- %s (%ar)" --since="5 hours ago" | head -5)
@@ -162,7 +161,7 @@ end_session() {
   fi
   
   # Update the session in Airtable
-  "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Completed" "$END_TIME" "$SUMMARY" "$FOCUS_MODULE"
+  "$REPO_DIR/tools/dev-tracker/synergy-airtable.sh" update-session "Completed" "$END_COMMIT" "$SUMMARY" "$FOCUS_MODULE"
   
   # Stop auto-commit if running
   source "$REPO_DIR/scripts/core/git-hooks.sh"

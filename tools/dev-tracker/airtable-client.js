@@ -14,7 +14,8 @@ const config = {
     TABLES: {
       MODULES: 'Modules',
       PHASES: 'Phases',
-      SESSIONS: 'Sessions'
+      SESSIONS: 'Sessions',
+      COMPONENTS: 'ComponentRegistry'
     }
   }
 };
@@ -83,6 +84,99 @@ class DevTrackingClient {
       return recordId;
     } catch (error) {
       console.error(`Error deleting record ${recordId} from ${tableName}:`, error);
+      throw error;
+    }
+  }
+  
+  // List all tables in the base
+  async listTables() {
+    try {
+      const response = await fetch(`https://api.airtable.com/v0/meta/bases/${config.AIRTABLE.BASE_ID}/tables`, {
+        headers: {
+          'Authorization': `Bearer ${config.AIRTABLE.PAT}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching tables: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return data.tables;
+    } catch (error) {
+      console.error('Error listing tables:', error);
+      throw error;
+    }
+  }
+  
+  // List fields in a table
+  async listFields(tableId) {
+    try {
+      const response = await fetch(`https://api.airtable.com/v0/meta/bases/${config.AIRTABLE.BASE_ID}/tables/${tableId}/fields`, {
+        headers: {
+          'Authorization': `Bearer ${config.AIRTABLE.PAT}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching fields: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return data.fields;
+    } catch (error) {
+      console.error('Error listing fields:', error);
+      throw error;
+    }
+  }
+  
+  // Create a new table
+  async createTable(tableName, fields) {
+    try {
+      const response = await fetch(`https://api.airtable.com/v0/meta/bases/${config.AIRTABLE.BASE_ID}/tables`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.AIRTABLE.PAT}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: tableName,
+          fields: fields
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error creating table: ${response.status} ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating table:', error);
+      throw error;
+    }
+  }
+  
+  // Create a new field in a table
+  async createField(tableId, field) {
+    try {
+      const response = await fetch(`https://api.airtable.com/v0/meta/bases/${config.AIRTABLE.BASE_ID}/tables/${tableId}/fields`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.AIRTABLE.PAT}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(field)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error creating field: ${response.status} ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating field:', error);
       throw error;
     }
   }

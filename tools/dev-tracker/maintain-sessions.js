@@ -203,5 +203,18 @@ async function maintainSessions() {
   }
 }
 
-// Run the maintenance
-maintainSessions();
+// Run the maintenance only if script is called directly
+if (require.main === module) {
+  maintainSessions()
+    .then(() => {
+      console.log('Maintenance completed when run directly');
+      process.exit(0);
+    })
+    .catch(error => {
+      console.error('Error during maintenance:', error);
+      process.exit(1);
+    });
+}
+
+// Export the function for use in other scripts
+module.exports = maintainSessions;
