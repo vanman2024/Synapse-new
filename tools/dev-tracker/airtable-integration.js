@@ -94,23 +94,43 @@ async function logSession(session) {
     
     // Prepare session record
     const sessionRecord = {
+      'Date': session.date || new Date().toISOString().split('T')[0],
       'Branch': session.branch || '',
       'Status': session.status || 'Completed',
-      'Commits': session.commits || '',
-      'Notes': session.summary || ''
+      'StartTime': session.startTime || '',
+      'EndTime': session.endTime || '',
+      'Summary': session.summary || '',
+      'Commits': session.commits ? session.commits.join(', ') : '',
+      'Notes': session.notes || ''
     };
     
     // If there's a related module, look up its ID and establish the link
     if (session.module) {
       try {
-        // Look up module ID by name
-        const moduleRecords = await airtableClient.findRecords('Modules', 
+        console.log(`Looking up module: "${session.module}"`);
+        
+        // Try exact match first
+        let moduleRecords = await airtableClient.findRecords('Modules', 
           `{Module Name} = "${session.module}"`);
           
+        // If no exact match, try partial match
+        if (moduleRecords.length === 0) {
+          // Create a more flexible search pattern
+          const moduleParts = session.module.split(' ');
+          // If module has multiple words, search for records containing the first two words
+          if (moduleParts.length > 1) {
+            const searchPattern = moduleParts.slice(0, 2).join(' ');
+            moduleRecords = await airtableClient.findRecords('Modules', 
+              `FIND("${searchPattern}", {Module Name}) > 0`);
+          }
+        }
+        
         if (moduleRecords.length > 0) {
-          // Set linked record field - must be an array of IDs
-          sessionRecord['Module'] = [moduleRecords[0].id];
-          console.log(`Linked session to module: ${session.module}`);
+          // Set linked record field for Focus - must be an array of IDs
+          sessionRecord['Focus'] = [moduleRecords[0].id];
+          console.log(`Linked session to module: ${moduleRecords[0].fields['Module Name']}`);
+        } else {
+          console.log(`No matching module found for "${session.module}"`);
         }
       } catch (error) {
         console.log(`Could not link to module: ${error.message}`);

@@ -34,13 +34,13 @@ Primary Field: Date (Date)
 |---------------|--------------------|-----------------------------------------|
 | Date          | Date               | Format: YYYY-MM-DD                      |
 | Branch        | Single line text   |                                         |
-| Focus         | Single line text   |                                         |
+| Focus         | Linked record      | Links to: Modules table                 |
 | Status        | Single select      | Options: Completed, Active              |
 | StartTime     | Single line text   | Format: HH:MM                           |
 | EndTime       | Single line text   | Format: HH:MM                           |
-| Summary       | Long text          |                                         |
-| Commits       | Long text          |                                         |
-| Notes         | Long text          |                                         |
+| Summary       | Long text          | Brief, feature-focused description      |
+| Commits       | Long text          | List of commit messages                 |
+| Notes         | Long text          | Detailed session notes                  |
 
 ## Manual Setup Instructions
 

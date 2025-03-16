@@ -73,11 +73,50 @@ case "$COMMAND" in
       MODULE="$FOCUS"
     fi
     
+    # Extract feature name from branch for better summaries
+    FEATURE_NAME=""
+    if [[ "$BRANCH" == feature/* ]]; then
+      FEATURE_NAME=$(echo "$BRANCH" | sed 's/feature\///')
+      # Convert dashes to spaces and capitalize words for readability
+      FEATURE_NAME=$(echo "$FEATURE_NAME" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')
+    fi
+    
+    # Generate a better summary if one doesn't exist in the session file
+    GENERATED_SUMMARY=""
+    if [ -z "$SUMMARY" ]; then
+      if [ -n "$FEATURE_NAME" ]; then
+        GENERATED_SUMMARY="Implementation of $FEATURE_NAME functionality"
+        
+        # Add module context if available
+        if [ -n "$MODULE" ]; then
+          GENERATED_SUMMARY="$GENERATED_SUMMARY, working on $MODULE"
+        fi
+        
+        # Add commit context if available
+        if [ -n "$COMMITS" ]; then
+          COMMIT_TYPES=$(echo "$COMMITS" | grep -o -E "feat:|fix:|refactor:|docs:|test:" | sort | uniq | tr '\n' ' ')
+          if [ -n "$COMMIT_TYPES" ]; then
+            GENERATED_SUMMARY="$GENERATED_SUMMARY. Includes $COMMIT_TYPES changes."
+          fi
+        fi
+      elif [ -n "$MODULE" ]; then
+        GENERATED_SUMMARY="Work on $MODULE implementation"
+      fi
+    fi
+    
     # Use Module from parameter or Focus if available
     MODULE_JSON=""
     if [ -n "$MODULE" ]; then
+      # We need to pass the module name and let the integration script find the ID
       MODULE_JSON="module: '$MODULE',"
       echo -e "${BLUE}Linking session to module: $MODULE${NC}"
+    fi
+    
+    # Set summary if we generated one
+    SUMMARY_JSON=""
+    if [ -n "$GENERATED_SUMMARY" ]; then
+      SUMMARY_JSON="summary: '$GENERATED_SUMMARY',"
+      echo -e "${BLUE}Generated summary: $GENERATED_SUMMARY${NC}"
     fi
     
     # Call Node.js script to log session
@@ -90,7 +129,7 @@ case "$COMMAND" in
         status: '$STATUS',
         startTime: '$START_TIME',
         endTime: '$END_TIME',
-        summary: '$SUMMARY',
+        summary: '${GENERATED_SUMMARY:-$SUMMARY}',
         commits: '$COMMITS'.split('|').filter(c => c),
         $MODULE_JSON
       };
@@ -191,6 +230,19 @@ case "$COMMAND" in
     $NODE_BIN "$SCRIPT_DIR/setup-airtable.js"
     ;;
     
+  # Maintain sessions
+  maintain-sessions)
+    # Call Node.js script to maintain sessions
+    $NODE_BIN "$SCRIPT_DIR/maintain-sessions.js"
+    
+    if [ $? -eq 0 ]; then
+      echo -e "${GREEN}Sessions maintained successfully.${NC}"
+    else
+      echo -e "${RED}Failed to maintain sessions.${NC}"
+      exit 1
+    fi
+    ;;
+    
   # Unknown command
   *)
     echo -e "${YELLOW}Unknown command: $COMMAND${NC}"
@@ -198,8 +250,9 @@ case "$COMMAND" in
     echo "  update-module <module-name> <status> - Update module status"
     echo "  log-session <session-file> - Log a session in Airtable"
     echo "  get-phase - Get current phase information"
-    echo "  get-module <module-name> - Get module information"
+    echo "  get-module <module-name> - Get module information" 
     echo "  get-phase-modules <phase-number> - Get modules for a phase"
+    echo "  maintain-sessions - Improve session summaries and module links"
     echo "  setup - Set up Airtable tables"
     exit 1
     ;;
