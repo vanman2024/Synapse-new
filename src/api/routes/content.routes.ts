@@ -12,6 +12,12 @@ contentRouter.get('/', contentController.getAll);
 // Get content by ID
 contentRouter.get('/:id', contentController.getById);
 
+// Analyze content
+contentRouter.get('/:id/analyze', contentController.analyzeContent);
+
+// Extract keywords from content
+contentRouter.get('/:id/keywords', contentController.extractKeywords);
+
 // Create new content
 contentRouter.post('/', contentController.create);
 
