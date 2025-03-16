@@ -155,7 +155,12 @@ The synergy.sh workflow script was refactored from a monolithic 1,500+ line scri
 ## Reference Material
 
 To understand the project better, refer to:
-- RECOVERY.md for project structure details
+- SCRIPT_MANIFEST.md for available scripts and commands
+- docs/project/DEVELOPMENT_OVERVIEW.md for project roadmap and phases
+- docs/project/developmentworkflows/SYNERGY_WORKFLOW.md for workflow information
 - docs/architecture/ for system design
-- docs/workflow/ for development workflow
+- scripts/README.md for module architecture documentation
+- scripts/core/README.md for core module details
+- scripts/integrations/README.md for integration details
+- tools/dev-tracker/AIRTABLE_SCHEMA.md for Airtable integration schema
 - SESSION.md for current status and focus
