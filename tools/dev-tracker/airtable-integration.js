@@ -173,33 +173,22 @@ async function logSession(session) {
     const now = new Date();
     const sessionDate = session.date ? new Date(session.date) : now;
     
-    // Prepare session record
+    // Simplified session record with only essential fields to reduce errors
     const sessionRecord = {
       'Branch': session.branch || '',
       'Status': session.status || 'Active',
       'Summary': session.summary || '',
-      'Commits': session.commits ? session.commits.join(', ') : '',
-      'Notes': session.notes || session.summary || '',
-      'BranchContext': session.branchContext || ''
-      // Removed 'Date Created' as it appears to be a computed field in Airtable
+      'Notes': session.notes || session.summary || ''
     };
     
-    // Add properly formatted date (required field)
-    sessionRecord['Date'] = formatDate(sessionDate);
-    
-    // Add start and end times
-    if (session.startTime) {
-      const startTime = typeof session.startTime === 'string' 
-        ? session.startTime 
-        : formatTime(session.startTime);
-      sessionRecord['StartDate'] = startTime;
+    // Add commit information if available
+    if (session.commits && session.commits.length > 0) {
+      sessionRecord['Commits'] = session.commits.join(', ');
     }
     
-    if (session.endTime) {
-      const endTime = typeof session.endTime === 'string'
-        ? session.endTime
-        : formatTime(session.endTime);
-      sessionRecord['EndDate'] = endTime;
+    // Add branch context if available
+    if (session.branchContext) {
+      sessionRecord['BranchContext'] = session.branchContext;
     }
     
     // Add Git commit hashes
